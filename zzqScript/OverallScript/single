@@ -1,0 +1,7 @@
+
+filename=$1
+pwd
+echo $filename
+file_no_suffix=$(basename -s .sh $filename)
+echo $file_no_suffix
+mv $filename $file_no_suffix

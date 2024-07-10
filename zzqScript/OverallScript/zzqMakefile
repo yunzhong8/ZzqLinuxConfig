@@ -31,7 +31,7 @@ item_type=$1
 check_require_para 1 "1 makefile类型"
 
 modle=$2
-shell_script_path=/home/zzq/Code/Sheel/
+shell_script_path=$PART_EXE_SCRIPT_PATH
 son_script_path=makefiles
 
 if [ $item_type = 'c' ] ;then

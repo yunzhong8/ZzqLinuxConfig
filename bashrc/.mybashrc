@@ -4,7 +4,13 @@ ZZQ_CODE_HOME='~/Code'
 
 #****************************************定义环境变量****************************************************************#
 #自己编写脚本的环境变量（所有自己编写的脚本都放在这里）
-export  STARDICT_PATH=~/zzq_config/zzqScript 
+export EXE_SCIRPT_PATH=~/zzq_config/zzqScript 
+
+# 这保存的是配到系统环境变量中的脚本
+export OVERALL_EXE_SCRIPT_PATH=~/zzq_config/zzqScript/OverallScript/
+
+#这里保存的脚本是不会配到环境变量中去的
+export PART_EXE_SCRIPT_PATH=~/zzq_config/zzqScript/PartScript/
 
 #我的代码保存这里
 export CODE_PATH=~/Code
@@ -33,6 +39,9 @@ export PATH=/home/zzq/bin/:$PATH #export PATH=route:$PATH
 export PATH=/usr/lib/ccache:$PATH
 
 export PATH=/home/zzq/.local/bin/:$PATH
+
+# 将全局脚本目录加入环境变量里
+export PATH=$OVERALL_EXE_SCRIPT_PATH :$PATH
 
 #*************************************************alias****************************************************************
 #zzq自己设置的按键别名
