@@ -1,0 +1,92 @@
+#! /bin/bash
+#
+# zzqBatchFile.sh
+# Copyright (C) 2024 zzq <zzq@zzq-HP-Pavilion-Gaming-Laptop-15-cx0xxx>
+#
+# Distributed under terms of the MIT license.
+#
+echo "
+*************************************************************************
+脚本基本功能：                                                          *
+脚本使用：  zzqBackUp  运行模式                                         *
+# 0 表示不设置参数采用默认值
+# 1 表示自己设置第一个参数的值
+# 2 表示自己设置第二个参数的值
+# 3 表示自己设置全部参数的值
+eg：                                                                    *
+    1.   zzqBackUp  3 ~/Code   /tmp                                     *
+    解释：将~/Code目录进行压缩，保存到/tmp目录
+    2.                                                                  *
+其他信息：                                                              *
+*************************************************************************\n"
+parameter_names=(1 运行模式 待压缩文件的绝对路径  保存压缩文件的目录 4 5 6) #输入参数的名称列表
+parameter_num=1  # 脚本一定需要传入的参数个数
+shell_script_path=/home/zzq/Code/Sheel/   # 脚本待调用的脚本的父目录
+son_script_path=makefiles  # 待调用的脚本的子目录
+call_script_path="$shell_script_path""$son_script_path"
+
+
+#检测参数是否正确传入
+for i in $(seq 1 $parameter_num)
+do
+    if [ -z ${!i}  ];then # $i是空则输出
+        echo "${parameter_names[$i]}:未输入，终止脚本执行"
+        exit 1
+    else
+        echo "${parameter_names[$i]}:${!i}"
+    fi
+done
+# 获取脚本运行模式
+# 0 表示不设置参数
+# 1 表示自己设置第一个参数的值
+# 2 表示自己设置第二个参数的值
+# 3 表示自己设置全部参数的值
+op_type=$1
+if [ $op_type -eq '0' ];then
+
+	# 设置默认值
+
+	# 获取压缩路径
+	condense_dir_path="/home/zzq/ysyx/ysyx-workbench"
+
+	# 设置存放压缩后文件的路径
+	save_condese_file_path="/media/zzq/android/CurRepo/YsyxBenchWrok"
+elif [ $op_type -eq '1' ];then
+
+	# 获取压缩路径
+	condense_dir_path=$2
+
+elif [ $op_type -eq '2' ];then
+	# 设置存放压缩后文件的路径
+	save_condese_file_path=$2
+
+elif [ $op_type -eq '3' ] ;then
+	# 获取压缩路径
+	condense_dir_path=$2
+
+	# 设置存放压缩后文件的路径
+	save_condese_file_path=$3
+else
+	echo "$op_type运行模式没有设置"
+	exit 1
+fi
+
+
+# 获取压缩目录名称
+condense_dir_name=$(basename "$condense_dir_path" )
+
+# 获取压缩文件时的时间
+cur_date=$(date +%Y-%m-%d-%H-%M)
+
+# 输出压缩时间
+echo $cur_date
+
+echo "压缩目录$condense_dir_path"
+
+# 压缩后的文件名称
+condensed_file_name="$save_condese_file_path/$condense_dir_name""_$cur_date.tar.gz"
+
+# 压缩
+cd $condense_dir_path && cd .. && tar -cvf - $condense_dir_name | pigz --best -k > $condensed_file_name
+
+echo "压缩完成,压缩后：$condensed_file_name"

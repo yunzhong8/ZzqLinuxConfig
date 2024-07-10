@@ -1,0 +1,72 @@
+#*****************************************定义变量********************************************************************
+
+ZZQ_CODE_HOME='~/Code'
+
+#****************************************定义环境变量****************************************************************#
+#自己编写脚本的环境变量（所有自己编写的脚本都放在这里）
+export  STARDICT_PATH=~/zzq_config/zzqScript 
+
+#我的代码保存这里
+export CODE_PATH=~/Code
+
+# 我的项目保存在这里
+export ITEM_PATH=~/Item
+
+#我的笔记保存这里
+export MARKDOWN_PATH=~/Markdown 
+
+# 自己编写的库函数的环境变量
+export ZZQ_C_LIB=/home/zzq/Code/C_Cadd/zzqlib/
+
+#ysyx项目的路径
+export YSYX_PATH=~/ysyx
+
+## ysyx的配置
+export NEMU_HOME=/home/zzq/ysyx/ysyx-workbench/nemu
+export AM_HOME=/home/zzq/ysyx/ysyx-workbench/abstract-machine
+export NPC_HOME=/home/zzq/ysyx/ysyx-workbench/npc
+export NVBOARD_HOME=/home/zzq/ysyx/ysyx-workbench/nvboard
+
+#***************************************修改PATH环境变量****************************************************************
+export PATH=/home/zzq/bin/:$PATH #export PATH=route:$PATH
+#修改gcc为ccache中gcc
+export PATH=/usr/lib/ccache:$PATH
+
+export PATH=/home/zzq/.local/bin/:$PATH
+
+#*************************************************alias****************************************************************
+#zzq自己设置的按键别名
+alias zzqintoscirpt='cd  $STARDICT_PATH' # 快速进入脚本目录
+alias zzqintohosts='sudo vim /etc/hosts' #编辑hosts
+alias zzqintoDiary='cd $CODE_PATH''/Diary' # 编辑日记
+alias zzqintoDictionary='cd ~/Code/Dictionary' #进入自定义字典文件
+alias zzqintoLinuxConfig='cd ~/Code/Linux_Config'
+alias zzqintoback="cd $(ZZQ_OLD_DIR)"
+alias reboot='sync; sync; sync; reboot'
+
+# alias reboot=sync sync sync reboot
+alias zzqintoTemplate='cd /home/zzq/Code/Templates' #进入模板文件目录
+alias zzqintoshell='cd ~/Code/Sheel' #进脚本文件
+alias zzqintoysyx='cd ~/ysyx/ysyx-workbench' #进入一生一芯
+# 进入笔记
+alias zzqintoMarkdown='cd ~/Code/MarkDown/' # 快速进入笔记文件
+alias zzqintoMarkdownysyx='cd ~//Code/MarkDown/ysyx' #进入一生一芯笔记
+alias zzqrm="rm -rfI"
+
+
+
+
+#**************************************************软件特殊配置**********************************************************
+
+
+## vivado环境变量
+##使vivado可以在terminal上运行
+#source /home/zzq/pan_softwave/Xilinx/Vivado/2019.2/settings64.sh
+# export PATH=/usr/bin/vim:$PATH
+
+
+# 这个环境变量表示所有的和riscv
+export RISCV=/usr/local/riscv
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion

@@ -1,0 +1,44 @@
+#! /bin/bash
+#
+# zzqecho.sh
+# Copyright (C) 2024 zzq <zzq@zzq-HP-Pavilion-Gaming-Laptop-15-cx0xxx>
+#
+# Distributed under terms of the MIT license.
+#
+rm -rf makefile
+echo "创建一个基本的Makefile文件,会删除本目录下的makefile"
+echo "需要输入文件类型：
+c va nva \n
+"
+touch makefile
+function check_require_para(){
+    local require_para_num=$1
+    local parameter_names=$2
+    local i=1
+    while [ $i -le  $require_para_num  ]
+    do
+        if [ -z ${!i} ];then
+            echo "$0,${parameter_names[$i]}:未输入，终止脚本执行"
+            exit 1
+        else
+            echo "${parameter_names[$i]}:${!i}"
+        fi
+	((i++))
+    done
+}
+
+item_type=$1
+check_require_para 1 "1 makefile类型"
+
+modle=$2
+shell_script_path=/home/zzq/Code/Sheel/
+son_script_path=makefiles
+
+if [ $item_type = 'c' ] ;then
+	/bin/bash "$shell_script_path/$son_script_path/cmakefile.sh" $2 $3 $4 $5 $6 $7 $8 $9
+elif [ $item_type = 'va' ];then
+	/bin/bash "$shell_script_path/$son_script_path/vamakefile.sh" $2 $3 $4 $5 $6 $7 $8 $9
+elif [ $item_type = 'nva' ];then
+    /bin/bash "$shell_script_path/$son_script_path/nvamakefile.sh" $2 $3 $4 $5 $6 $7 $8 $9
+fi
+
