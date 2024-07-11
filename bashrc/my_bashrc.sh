@@ -4,13 +4,13 @@ ZZQ_CODE_HOME='~/Code'
 
 #****************************************定义环境变量****************************************************************#
 #自己编写脚本的环境变量（所有自己编写的脚本都放在这里）
-export EXE_SCIRPT_PATH=~/zzq_config/zzqScript 
+export EXE_SCIRPT_PATH=~/.zzq_config/zzqScript 
 
 # 这保存的是配到系统环境变量中的脚本
-export OVERALL_EXE_SCRIPT_PATH=~/zzq_config/zzqScript/OverallScript/
+export OVERALL_EXE_SCRIPT_PATH=~/.zzq_config/zzqScript/OverallScript/
 
 #这里保存的脚本是不会配到环境变量中去的
-export PART_EXE_SCRIPT_PATH=~/zzq_config/zzqScript/PartScript/
+export PART_EXE_SCRIPT_PATH=~/.zzq_config/zzqScript/PartScript/
 
 #我的代码保存这里
 export CODE_PATH=~/Code
@@ -40,6 +40,8 @@ export PATH=/usr/lib/ccache:$PATH
 
 export PATH=/home/zzq/.local/bin/:$PATH
 
+export PATH=/usr/bin:/bin:$PATH
+
 # 将全局脚本目录加入环境变量里
 export PATH=$OVERALL_EXE_SCRIPT_PATH :$PATH
 
@@ -50,7 +52,6 @@ alias zzqintohosts='sudo vim /etc/hosts' #编辑hosts
 alias zzqintoDiary='cd $CODE_PATH''/Diary' # 编辑日记
 alias zzqintoDictionary='cd ~/Code/Dictionary' #进入自定义字典文件
 alias zzqintoLinuxConfig='cd ~/Code/Linux_Config'
-alias zzqintoback="cd $(ZZQ_OLD_DIR)"
 alias reboot='sync; sync; sync; reboot'
 
 # alias reboot=sync sync sync reboot
