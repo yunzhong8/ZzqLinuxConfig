@@ -1,0 +1,75 @@
+"郑忠强自己添加的vim设置(zzqself add vimrc)
+"
+" vim软件规定设置的vimrc地址：~/.vimrc
+" 郑忠强自己设置的vimrc启用地址：/home/zzq/.vim_runtime/my_configs.vim
+" 郑忠强自己设置的vimrc编辑地址：/home/zzq/Code/MarkDown/Vim/my_configs.vim
+" 郑忠强设置将编辑的vimrc编程启用的vimrc的脚本zzqsetvimrc
+
+"设置显示行号
+set number
+
+"设置显示相对行号
+set relativenumber
+
+"设置编码格式显示中文
+set fileencodings=ucs-bom,utf-8,utf-16,gbk,big5,gb18030,latin1
+set fileencoding=utf-88
+"启动语法高亮
+"syntax enable
+" 启用q全局粘贴
+set clipboard=unnamedplus
+set paste
+"verilog设置
+"允许使用%号在匹配关键字之间跳转
+runtime macros/matchit.vim
+
+"设置ctag往父目录查找tags
+set tags=tags;/
+
+"将vim的yy复制结果可被系统的ctrl+v使用
+set clipboard=unnamedplus
+
+
+"**************************************************郑忠强改建***************************************************
+"设置ctrl+e为显示隐藏字符
+map <C-e> :set conceallevel=0<CR><CR>
+"设置启动检查单词拼写错误快捷键
+map <C-p> :set spell<CR>
+"设置摸板文件目录，设置目录变量templates_directory的值为'~/code/Dictinary'如此，我在vim命令行输入：template  zz.yy就会到目录'~/code/Dictinary'中索引(目录设置失败了)
+"let g:templates_directory=~/code/Dictionary
+
+" 使用shift+ctrl+↑ 对vim进行上分屏
+nnoremap <S-C-Up> :topleft sp<CR>
+"使用shifr+ctrl+↓d 对vim下分屏
+nnoremap <S-C-Down> :botright sp<CR>
+" 使用 Shift+Ctrl+← 进行左分屏
+nnoremap <S-C-Left> :topleft sp<CR>
+" 使用 Shift+Ctrl+→ 进行右分屏
+nnoremap <S-C-Right> :botright sp<CR>
+
+" 使用 Ctrl+→ 进行右侧分屏切换
+nnoremap <C-Right> <C-W>l
+" 使用 Ctrl+→ 进行左侧分屏切换
+nnoremap <C-Left> <C-W>h
+" 使用 Ctrl+→ 进行上侧分屏切换
+nnoremap <C-Up> <C-W>k
+" 使用 Ctrl+→ 进行下侧分屏切换
+nnoremap <C-Down> <C-W>j
+
+" 使用ctlr+c表示复制
+nnoremap <C-z-c> "+y
+vnoremap <C-z-c> "+y
+
+"使用ctlr+v表示 粘贴
+nnoremap <C-z-v> "+p
+vnoremap <C-z-v> "+p
+
+"使用ctlr+x表示 剪切
+nnoremap <C-z-x> "+d
+vnoremap <C-z-x> "+d
+
+" 使用ctlr+z表示撤销
+"nnoremap <C-z-z> u
+
+" 使用ctlr+s表示保存
+nnoremap <C-z-s> :w<CR>
