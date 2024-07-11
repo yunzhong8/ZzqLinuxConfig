@@ -5,6 +5,8 @@ ZZQ_CODE_HOME="${HOME}/Code"
 # 自己编写脚本的环境变量（所有自己编写的脚本都放在这里）
 export EXE_SCIRPT_PATH="${HOME}/.zzq_config/zzqScript"
 
+# 进入zzq自己配置的config
+export ZCONFIG_PATH="${HOME}/.zzq_config"
 # 这保存的是配到系统环境变量中的脚本
 export OVERALL_EXE_SCRIPT_PATH="${HOME}/.zzq_config/zzqScript/OverallScript/"
 
@@ -42,6 +44,7 @@ export PATH="${OVERALL_EXE_SCRIPT_PATH}:${PATH}" # 全局脚本目录
 
 #*************************************************alias****************************************************************
 # 自定义快捷命令
+alias zzqintozconfig="cd ${ZCONFIG_PATH}"
 alias zzqintoscirpt="cd ${EXE_SCIRPT_PATH}"        # 快速进入脚本目录
 alias zzqintohosts="sudo vim /etc/hosts"           # 编辑hosts
 alias zzqintoDiary="cd ${CODE_PATH}/Diary"         # 编辑日记
