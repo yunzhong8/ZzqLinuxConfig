@@ -47,12 +47,14 @@ alias zzqintohosts="sudo vim /etc/hosts"           # 编辑hosts
 alias zzqintoDiary="cd ${CODE_PATH}/Diary"         # 编辑日记
 alias zzqintoDictionary="cd ${CODE_PATH}/Dictionary" # 进入自定义字典文件
 alias zzqintoLinuxConfig="cd ${CODE_PATH}/Linux_Config"
-alias reboot="sync; sync; sync; reboot"
+alias zzqintoItem="cd ${ITEM_PATH}"
 alias zzqintoTemplate="cd ${CODE_PATH}/Templates"  # 进入模板文件目录
 alias zzqintoshell="cd ${CODE_PATH}/Shell"         # 进入脚本文件
 alias zzqintoysyx="cd ${YSYX_PATH}/ysyx-workbench" # 进入一生一芯项目
 alias zzqintoMarkdown="cd ${MARKDOWN_PATH}"        # 快速进入笔记文件
 alias zzqintoMarkdownysyx="cd ${MARKDOWN_PATH}/ysyx" # 进入一生一芯笔记
+
+alias reboot="sync; sync; sync; reboot"
 alias zzqrm="rm -rfI"                              # rm命令的安全别名
 
 #**************************************************软件特殊配置**********************************************************
@@ -66,3 +68,4 @@ export RISCV="/usr/local/riscv"
 export NVM_DIR="${HOME}/.nvm"
 [ -s "${NVM_DIR}/nvm.sh" ] && \. "${NVM_DIR}/nvm.sh"  # This loads nvm
 [ -s "${NVM_DIR}/bash_completion" ] && \. "${NVM_DIR}/bash_completion"  # This loads nvm bash_completion
+
