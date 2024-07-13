@@ -1,4 +1,12 @@
 #*****************************************定义变量********************************************************************
+###
+ # @Author: ysyx_22050928-zheng zhong qiang 3486829357@qq.com
+ # @Date: 2024-07-13 13:18:48
+ # @LastEditors: ysyx_22050928-zheng zhong qiang 3486829357@qq.com
+ # @LastEditTime: 2024-07-13 17:50:34
+ # @FilePath: /ZzqLinuxConfig/bashrc/my_bashrc.sh
+ # @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+### 
 ZZQ_CODE_HOME="${HOME}/Code"
 
 #****************************************定义环境变量****************************************************************#
@@ -8,7 +16,7 @@ export EXE_SCIRPT_PATH="${HOME}/.zzq_config/zzqScript"
 # 进入zzq自己配置的config
 export ZCONFIG_PATH="${HOME}/.zzq_config"
 # 这保存的是配到系统环境变量中的脚本
-export OVERALL_EXE_SCRIPT_PATH="${HOME}/.zzq_config/zzqScript/OverallScript/"
+export OVERALL_EXE_BASIC_SCRIPT_PATH="${HOME}/.zzq_config/zzqScript/OverallScript/basic"
 
 # 这里保存的脚本是不会配到环境变量中去的
 export PART_EXE_SCRIPT_PATH="${HOME}/.zzq_config/zzqScript/PartScript/"
@@ -40,7 +48,7 @@ export PATH="${HOME}/bin:${PATH}"             # 用户自定义bin目录
 export PATH="/usr/lib/ccache:${PATH}"         # 使用ccache加速gcc
 export PATH="${HOME}/.local/bin:${PATH}"      # 用户本地安装的工具
 export PATH="/usr/bin:/bin:${PATH}"           # 系统默认bin目录
-export PATH="${OVERALL_EXE_SCRIPT_PATH}:${PATH}" # 全局脚本目录
+export PATH="${OVERALL_EXE_BASIC_SCRIPT_PATH}:${PATH}" # 全局基本脚本目录
 
 #*************************************************alias****************************************************************
 # 自定义快捷命令

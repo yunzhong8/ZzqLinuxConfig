@@ -1,3 +1,11 @@
+###
+ # @Author: ysyx_22050928-zheng zhong qiang 3486829357@qq.com
+ # @Date: 2024-07-13 13:18:48
+ # @LastEditors: ysyx_22050928-zheng zhong qiang 3486829357@qq.com
+ # @LastEditTime: 2024-07-13 17:47:30
+ # @FilePath: /ZzqLinuxConfig/zzqScript/OverallScript/ubuntu/zzqWork
+ # @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+### 
 #! /bin/bash
 #
 # zzqwork.sh
@@ -33,7 +41,7 @@ action=$1 #获取工作开始还是结束
 time=$2   #1表示短期结束，即不用推送代码，拉取代码，2表示长期结束，即很长时间不会用
 if [ $action = 'start' ];then
     echo "正在启动pigo"
-    gnome-terminal -- bash -c "zzqpigo; exec bash"
+    gnome-terminal -- bash -c "zzqPigo; exec bash"
     echo
     if [ $? -eq -0 ];then
         echo "成功打开新端口，并启动pigo"
@@ -43,7 +51,7 @@ if [ $action = 'start' ];then
     fi
 
     echo "正在启动vpn"
-    gnome-terminal -- bash -c "zzqvpn start; exec bash"
+    gnome-terminal -- bash -c "zzqVpn start; exec bash"
     echo
     if [ $? -eq -0 ];then
         echo "成功打开新端口，并启动vpn"
