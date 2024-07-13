@@ -3,7 +3,7 @@
  # @Author: ysyx_22050928-zheng zhong qiang 3486829357@qq.com
  # @Date: 2024-07-13 13:47:23
  # @LastEditors: ysyx_22050928-zheng zhong qiang 3486829357@qq.com
- # @LastEditTime: 2024-07-13 17:56:10
+ # @LastEditTime: 2024-07-13 22:32:42
  # @FilePath: /ZzqLinuxConfig/bashrc/special_bashrc/ubuntu/linux_bashrc.sh
  # @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 ### 
@@ -24,19 +24,20 @@ export ZZQ_C_LIB=/home/zzq/Code/C_Cadd/zzqlib/
 export CHIPLAB_HOME=/home/zzq/code/LoogArch/chiplab
 
 #*******************************************PATH***********************************************8
-export PATH="${OVERALL_EXE_UBUNTU_SCRIPT_PATH}:${PATH}" # 全局Ubuntu脚本目录
+# 全局Ubuntu脚本目录
+export PATH=${OVERALL_EXE_UBUNTU_SCRIPT_PATH}:${PATH}
 ### loogarch32环境变量
-export PATH=/home/zzq/pan_softwave/loongarch32r-linux-gnusf-2022-05-20-x86/loongarch32r-linux-gnusf-2022-05-20/bin/:$PATH
+ export PATH=/home/zzq/pan_softwave/loongarch32r-linux-gnusf-2022-05-20-x86/loongarch32r-linux-gnusf-2022-05-20/bin/:${PATH}
 
-#自己编写脚本的环境变量（所有自己编写的脚本都放在这里）
-export PATH=/home/zzq/bin/:$PATH #export PATH=route:$PATH
-
-export PATH=/home/zzq/.local/bin/:$PATH
+ export PATH=/home/zzq/.local/bin/:${PATH}
 
 #chiplibGCC交叉编译器的环境变量
-export PATH=/home/zzq/code/LoogArch/chiplab/toolchains/loongarch32r-linux-gnusf-2022-05-20/bin/:$PATH
+ export PATH=/home/zzq/code/LoogArch/chiplab/toolchains/loongarch32r-linux-gnusf-2022-05-20/bin/:${PATH}
 
-export export PATH=/usr/local/lib/nodejs/bin:/home/zzq/bin:/home/zzq/code/LoogArch/chiplab/toolchains/loongarch32r-linux-gnusf-2022-05-20/bin/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin
+export PATH="/usr/local/lib/nodejs/bin:
+            /home/zzq/bin:
+            /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:
+            /usr/games:/usr/local/games:/snap/bin:/snap/bin:"${PATH}
 
 
 #**********************************************alia****************************************
