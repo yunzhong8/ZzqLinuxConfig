@@ -53,6 +53,7 @@ export PATH="${OVERALL_EXE_BASIC_SCRIPT_PATH}:${PATH}" # 全局基本脚本目�
 #*************************************************alias****************************************************************
 # 自定义快捷命令
 alias zzqintozconfig="cd ${ZCONFIG_PATH}"
+alias zzqintocode="cd ${CODE_PATH}"
 alias zzqintoscirpt="cd ${EXE_SCIRPT_PATH}"        # 快速进入脚本目录
 alias zzqintohosts="sudo vim /etc/hosts"           # 编辑hosts
 alias zzqintoDiary="cd ${CODE_PATH}/Diary"         # 编辑日记
@@ -64,7 +65,7 @@ alias zzqintoshell="cd ${CODE_PATH}/Shell"         # 进入脚本文件
 alias zzqintoysyx="cd ${YSYX_PATH}/ysyx-workbench" # 进入一生一芯项目
 alias zzqintoMarkdown="cd ${MARKDOWN_PATH}"        # 快速进入笔记文件
 alias zzqintoMarkdownysyx="cd ${MARKDOWN_PATH}/ysyx" # 进入一生一芯笔记
-
+alias zzqintoysyxnpc="cd ${NPC_HOME}"
 alias reboot="sync; sync; sync; reboot"
 alias zzqrm="rm -rfI"                              # rm命令的安全别名
 
