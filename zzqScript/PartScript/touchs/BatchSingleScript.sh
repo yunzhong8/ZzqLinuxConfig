@@ -29,7 +29,7 @@ parameter_num=1  # 脚本一定需要传入的参数个数
 
 #echo " $parameter_names zzq:$(seq 1 $parameter_num)"
 #检测参数是否正确传入
-for i in $(seq 1 $parameter_names)
+for i in $(seq 1 $parameter_num)
 do
     if [ -z ${!i}  ];then # $i是空则输出
         echo "${parameter_names[$i]}:未输入，终止脚本执行"
