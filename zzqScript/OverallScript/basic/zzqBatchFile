@@ -21,7 +21,7 @@ shell_script_path=/home/zzq/Code/Sheel/   # 脚本待调用的脚本的父目录
 son_script_path=makefiles  # 待调用的脚本的子目录
 call_script_path="$shell_script_path""$son_script_path"
 
-#echo " $parameter_names zzq:$(seq 1 $parameter_names)"
+#echo " $parameter_names zzq:$(seq 1 $parameter_num)"
 #检测参数是否正确传入
 for i in $(seq 1 $parameter_names)
 do

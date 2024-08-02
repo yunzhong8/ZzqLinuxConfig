@@ -22,7 +22,7 @@ eg：                                                                    *
     解释：                                                              *
     2.                                                                  *\n
 其他信i息：
-vatb nvatb*
+vatb nvatb batch
 *************************************************************************\n"
 parameter_names=(1 file_type filename v_filename 4 5 6) #输入参数的名称列表
 
@@ -47,4 +47,6 @@ if [ $file_type = 'vatb' ];then
 
 elif  [ $file_type = "nvatb" ];then
 	$SH "$shell_script_path$son_script_path/nvatb.sh" $2 $3 $4 $5 $6 $7 $8 $9
+elif [ $file_type = "batch" ];then
+	$SH "$shell_script_path$son_script_path/BatchSingleScript.sh" $2 $3 $4 $5 $6 $7 $8 $9
 fi
