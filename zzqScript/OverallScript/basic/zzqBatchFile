@@ -50,12 +50,9 @@ get_files_without_extension() {
             filename=$(basename "$file")
             files_list+=("$filename")
             filename_no_extension="${filename%.*}"
-			extenion="${filename##*.}"
-			echo $filename $extenion $filename
+						extenion="${filename##*.}"
+						echo $filename $extenion $filename
             files_basename_list+=("$filename_no_extension")
-			# if [ $extenion = "v" ];then
-            # 	files_basename_list+=("$filename")
-			# fi
         fi
     done
 	cd $work_path
@@ -64,11 +61,13 @@ get_files_without_extension() {
 deal_files(){
 	folder_path=$1
 	work_path=$2
+	handle_single_file_script_path=$(dirname $handle_single_file_script) # 获取对应的绝对了路径
+  folder_absolute_path=$(realpath $folder_path)
 	cd $folder_path
 
 	for filename in "${files_list[@]}"; do
 		chmod +x $handle_single_file_script # 确保脚本具有执行权
-        /bin/bash $handle_single_file_script $filename # 对当个文件执行程序
+    /bin/bash $handle_single_file_script $filename $handle_single_file_script_path $folder_absolute_path # 对当个文件执行程序
 	done 
 	cd $work_path
 

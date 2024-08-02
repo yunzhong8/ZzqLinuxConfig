@@ -56,16 +56,20 @@ if [ -z $handle_file_path ]; then
     handle_file_path=$(pwd)
 fi
 
-pwd
-echo $handle_file_name
-file_no_suffix=$(basename -s .sh $handle_file_name)
 
 #以下内容是个人需要配置的
 #设置当前脚本工作路径
-script_work_path=
+script_work_path=$handle_file_path
+handle_file_suffix=.sh
 
 # 进入脚本工作路径
 pushd $script_work_path
+
+pwd
+echo $handle_file_name
+file_no_suffix=$(basename -s $handle_file_suffix  $handle_file_name)
+#todo
+
 popd
 EOF
 
