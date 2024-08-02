@@ -9,7 +9,7 @@ echo "
 *************************************************************************
 脚本基本功能：            进行批处理                                              *
 脚本使用：                                                              *\n
-eg：                                                                    *
+eg：待处理文件的路径，只需要从当前目录开始的相对路径即可 ，单个处理脚本文件，只需要从当前目录开始的相对路径即可 *
     1.                                                                  *
     解释：                                                              *
     2.                                                                  *\n
@@ -33,13 +33,13 @@ do
     fi
 done
 #exit 1
-folder_path=$1
-handle_single_file_script=$2
+folder_path=$(realpath $1 )
+handle_single_file_script=$(realpath $2 )
 
 # 获取用户输入
 get_files_without_extension() {
     folder_path=$1
-	work_path=$2
+	  work_path=$2
     cd $folder_path
 
     files_basename_list=()
@@ -62,12 +62,11 @@ deal_files(){
 	folder_path=$1
 	work_path=$2
 	handle_single_file_script_path=$(dirname $handle_single_file_script) # 获取对应的绝对了路径
-  folder_absolute_path=$(realpath $folder_path)
 	cd $folder_path
 
 	for filename in "${files_list[@]}"; do
 		chmod +x $handle_single_file_script # 确保脚本具有执行权
-    /bin/bash $handle_single_file_script $filename $handle_single_file_script_path $folder_absolute_path # 对当个文件执行程序
+    /bin/bash $handle_single_file_script $filename $handle_single_file_script_path $folder_path # 对当个文件执行程序
 	done 
 	cd $work_path
 
