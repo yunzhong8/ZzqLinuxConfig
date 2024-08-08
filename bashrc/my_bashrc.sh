@@ -6,7 +6,7 @@
  # @LastEditTime: 2024-07-13 17:50:34
  # @FilePath: /ZzqLinuxConfig/bashrc/my_bashrc.sh
  # @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
-### 
+###
 ZZQ_CODE_HOME="${HOME}/Code"
 
 #****************************************定义环境变量****************************************************************#
@@ -23,6 +23,9 @@ export PART_EXE_SCRIPT_PATH="${HOME}/.zzq_config/zzqScript/PartScript/"
 
 # 我的代码保存这里
 export CODE_PATH="${HOME}/Code"
+
+# mill的版本
+export DEFAULT_MILL_VERSION=0.11.8
 
 # 我的项目保存在这里
 export ITEM_PATH="${HOME}/Item"
