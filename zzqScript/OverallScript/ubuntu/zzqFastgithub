@@ -2,8 +2,9 @@
 echo option:打开start,关闭stop
 option=$1
 pw=888888
+soft_path="$EXE_SOFT_PATH""/fastgithub_linux-x64/fastgithub"
 if [ $option = "start" ] || [ $option = "stop" ] ;then
-	 sudo /home/zzq/soft_collect/fastgithub_linux-x64/fastgithub $option
+	 sudo $soft_path $option
 else
 	echo "$option无法识别"
 fi

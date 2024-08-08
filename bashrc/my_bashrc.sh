@@ -27,6 +27,9 @@ export CODE_PATH="${HOME}/Code"
 # mill的版本
 export DEFAULT_MILL_VERSION=0.11.8
 
+# 保存可执行软件的目录
+export EXE_SOFT_PATH="/home/zzq/soft_collection"
+
 # 我的项目保存在这里
 export ITEM_PATH="${HOME}/Item"
 
