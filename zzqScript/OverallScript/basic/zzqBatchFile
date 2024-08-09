@@ -1,4 +1,4 @@
-#! /bin/bash
+#! /bin/bash  
 #
 # zzqBatchFile.sh
 # Copyright (C) 2024 zzq <zzq@zzq-HP-Pavilion-Gaming-Laptop-15-cx0xxx>
@@ -66,10 +66,14 @@ deal_files(){
 
 	for filename in "${files_list[@]}"; do
 		chmod +x $handle_single_file_script # 确保脚本具有执行权
-  	run_state=$(/bin/bash $handle_single_file_script $filename $handle_single_file_script_path $folder_path) # 对当个文件执行程序
-	if [ run_state = -1 ] ;then
-		echo "$filename 运行失败"
-	fi
+  		run_state=$(/bin/bash $handle_single_file_script $filename $handle_single_file_script_path $folder_path ) # 对当个文件执行程序
+		run_state=$?	
+		echo "run_state:$run_state"
+		if [ "$run_state" = "255" ] ;then
+			echo "***********$filename 运行失败*****************"
+			exit 1
+		fi
+		echo "******************运行成功******************"
 	done 
 	cd $work_path
 

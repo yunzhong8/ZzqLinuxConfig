@@ -6,8 +6,8 @@ touch $script_name
 
 # 使用 Here Document 将内容写入文件
 cat << 'EOF' > $script_name
-echo "
 #!/bin/bash
+echo "
 *************************************************************************
 脚本基本功能：                                                          *
 脚本使用：  zzqBackUp  运行模式                                         *
@@ -71,7 +71,7 @@ file_no_suffix=$(basename -s $handle_file_suffix  $handle_file_name)
 #todo
 error=
 if [ $error ] ;then
-	echo "-1"
+	exit -1
 fi
 popd
 EOF
