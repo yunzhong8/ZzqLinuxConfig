@@ -69,7 +69,10 @@ pwd
 echo $handle_file_name
 file_no_suffix=$(basename -s $handle_file_suffix  $handle_file_name)
 #todo
-
+error=
+if [ $error ] ;then
+	echo "-1"
+fi
 popd
 EOF
 

@@ -66,7 +66,10 @@ deal_files(){
 
 	for filename in "${files_list[@]}"; do
 		chmod +x $handle_single_file_script # 确保脚本具有执行权
-    /bin/bash $handle_single_file_script $filename $handle_single_file_script_path $folder_path # 对当个文件执行程序
+  	run_state=$(/bin/bash $handle_single_file_script $filename $handle_single_file_script_path $folder_path) # 对当个文件执行程序
+	if [ run_state = -1 ] ;then
+		echo "$filename 运行失败"
+	fi
 	done 
 	cd $work_path
 
