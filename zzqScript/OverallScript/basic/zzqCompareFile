@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# 比对两个文件并逐行显示差异，找到不同之处时暂停
+diff --old-group-format=$'\n>>> %dn File1: %<\n' \
+     --new-group-format=$'>>> %dn File2: %>\n' \
+     --unchanged-group-format=$'' \
+     --changed-group-format=$'\n>>> %dn File1: %<\n>>> %dn File2: %>\n' file1.txt file2.txt | while read -r line; do
+    echo "$line"
+    read -p "Press any key to continue..."
+done
+

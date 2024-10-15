@@ -1,5 +1,6 @@
 #! /bin/bash
 echo "创建一个基本的Makefile文件,会删除本目录下的makefile"
+
 echo "需要输入两个变量：\n
 vamakefile vfile_top_name c_mode [c_file_path] v_mode [v_file_path]
 c_mode:1 2 3 va 1 2 3 nva_mode:1 2 3
@@ -12,10 +13,10 @@ c_mode:1 2 3 va 1 2 3 nva_mode:1 2 3
 	2: default:src/all .v as verilog file
 	3: self v file ,max support num :4,input absulot path
 "
-echo " eg：zzqmakefile 1 gdb exe.c
-echo 表示采用指定文件模式，启用gdb调试，对exe.c文件进行编译
-"
+
 touch makefile
+#******************************************* 解析传入的参数******************************************
+# 检查参数个数
 function check_require_para(){
     local require_para_num=$1
     local parameter_names=$2
@@ -31,15 +32,7 @@ function check_require_para(){
 		((i++))
     done
 }
-parameter_names=(1  modle参数 是否使用gdb的参数)
-if [ -z $1 ];then
-    echo "${parameter_names[1]}:未输入，终止脚本执行"
-    exit 1
-else
-    echo "${parameter_names[1]}:$1"
-
-fi
-
+parameter_names=(1  verilog的顶层文件名 C语言文件模式 ... Verilog文件模式 ....)
 require_para_num=2
 check_require_para $parameter_names $require_para_num
 
@@ -63,6 +56,7 @@ if [ $cmodle = 3 ];then
 	done
 	modle2=${!modle2_index}
 fi
+
 vmodle=${modle2:0:1}
 vfile_num=${modle2:1:2}
 
@@ -76,6 +70,7 @@ if [ $vmodle = 3 ] ;then
 	done
 fi
 rm -rf makefile
+
 ## 编写生成makefile文件代码############################################################
 echo "
 all: sim
