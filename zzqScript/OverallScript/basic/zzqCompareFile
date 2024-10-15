@@ -1,3 +1,5 @@
+
+
 #!/bin/bash
 
 # 检查是否传入两个文件作为参数
@@ -10,12 +12,18 @@ fi
 file1=$1
 file2=$2
 
-# 比对两个文件并逐行显示差异，找到不同之处时暂停
-diff --old-group-format=$'\n>>> %dn File1: %<\n' \
-     --new-group-format=$'>>> %dn File2: %>\n' \
-     --unchanged-group-format=$'' \
-     --changed-group-format=$'\n>>> %dn File1: %<\n>>> %dn File2: %>\n' "$file1" "$file2" | while read -r line; do
-    echo "$line"
-    read -p "Press any key to continue..."
-done
+# 逐行读取并比对两个文件
+line_num=0
+while IFS= read -r line1 && IFS= read -r line2 <&3; do
+    line_num=$((line_num + 1))
+    if [ "$line1" != "$line2" ]; then
+        echo "Difference found at line $line_num"
+        echo "File1: $line1"
+        echo "File2: $line2"
+        exit 1
+    fi
+done < "$file1" 3< "$file2"
+
+# 如果执行到此处，说明文件内容相同
+echo "Files are identical."
 
