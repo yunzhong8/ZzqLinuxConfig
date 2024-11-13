@@ -37,12 +37,6 @@ if [ -z $3 ] ;then
 fi
 zip_suffix_num=$3 #获取文件名中压缩的后缀数目
 
-if [ -z $4 ] ;then
-   extract_save_path="./$file_name_nosuffix"
-else
-   extract_save_path=$4
-fi
-
 
 #获取待解的文件的文件名不带压缩后缀
 temp_file_name=$file_name
@@ -54,12 +48,14 @@ elif [ $zip_suffix_num = 2 ];then
     temp_file_name=${temp_file_name%.*}
     file_name_nosuffix=${temp_file_name%.*}
 fi
-#file_name_nosuffix_len=${#file_name_nosuffix}
-#echo "file_name_nosuffix_len: $file_name_nosuffix_len,file_name_len$file_name_len"
-#file_name_len=`expr $file_name_len - 1`
-#echo "file_name_nosuffix_len: $file_name_nosuffix_len,file_name_len$file_name_len"
-#suffix=${file_name:$file_name_nosuffix_len}
-#suffix=${file_name:26}
+
+# 设置解压保存的路径
+if [ -z $4 ] ;then
+   extract_save_path="./$file_name_nosuffix"
+else
+   extract_save_path=$4
+fi
+
 echo "file_name:$file_name"
 echo "压缩后缀名：$suffix"
 echo "不带压缩后缀的文件名：$file_name_nosuffix"
