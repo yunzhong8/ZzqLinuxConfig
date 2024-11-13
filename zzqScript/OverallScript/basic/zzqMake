@@ -1,4 +1,12 @@
-#! /bin/sh
+###
+ # @Author: zzqgyy 3486829357@qq.com
+ # @Date: 2024-11-13 15:47:35
+ # @LastEditors: zzqgyy 3486829357@qq.com
+ # @LastEditTime: 2024-11-13 15:50:16
+ # @FilePath: /basic/zzqMake
+ # @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+### 
+#! /bin/bash
 #
 # zzqmake.sh
 # Copyright (C) 2023 zzq <zzq@zzq-HP-Pavilion-Gaming-Laptop-15-cx0xxx>
