@@ -48,7 +48,7 @@ export AM_HOME="${HOME}/ysyx/ysyx-workbench/abstract-machine"
 export NPC_HOME="${HOME}/ysyx/ysyx-workbench/npc"
 export NVBOARD_HOME="${HOME}/ysyx/ysyx-workbench/nvboard"
 # 配置JAVA的jvm所在路径
-export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+#export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
 #***************************************修改PATH环境变量****************************************************************
 # 修改PATH环境变量
 export PATH="${HOME}/bin:${PATH}"             # 用户自定义bin目录
@@ -56,7 +56,7 @@ export PATH="/usr/lib/ccache:${PATH}"         # 使用ccache加速gcc
 export PATH="${HOME}/.local/bin:${PATH}"      # 用户本地安装的工具
 export PATH="/usr/bin:/bin:${PATH}"           # 系统默认bin目录
 export PATH="${OVERALL_EXE_BASIC_SCRIPT_PATH}:${PATH}" # 全局基本脚本目录
-export PATH=$JAVA_HOME/bin:$PATH
+#export PATH=$JAVA_HOME/bin:$PATH
 
 #*************************************************alias****************************************************************
 # 自定义快捷命令
