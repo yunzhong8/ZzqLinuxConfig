@@ -48,7 +48,7 @@ export AM_HOME="${HOME}/ysyx/ysyx-workbench/abstract-machine"
 export NPC_HOME="${HOME}/ysyx/ysyx-workbench/npc"
 export NVBOARD_HOME="${HOME}/ysyx/ysyx-workbench/nvboard"
 # 配置JAVA的jvm所在路径
-export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
 #***************************************修改PATH环境变量****************************************************************
 # 修改PATH环境变量
 export PATH="${HOME}/bin:${PATH}"             # 用户自定义bin目录
