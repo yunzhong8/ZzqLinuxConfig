@@ -21,3 +21,4 @@ tmp/
 temp/
 # 忽略所有以 private 开头的目录下的所有内容
 private*/**
+!private*/readme.md
