@@ -28,7 +28,7 @@ export CODE_PATH="${HOME}/Code"
 export DEFAULT_MILL_VERSION=0.11.8
 
 # 保存可执行软件的目录
-export EXE_SOFT_PATH="/home/zzq/soft_collection"
+export EXE_SOFT_PATH="${HOME}soft_collection"
 
 # 我的项目保存在这里
 export ITEM_PATH="${HOME}/Item"
@@ -80,7 +80,7 @@ alias zzqrm="rm -rfI"                              # rm命令的安全别名
 
 #**************************************************软件特殊配置**********************************************************
 # vivado环境变量 (注释掉，如果需要可以取消注释)
-# source /home/zzq/pan_softwave/Xilinx/Vivado/2019.2/settings64.sh
+# source ${HOME}pan_softwave/Xilinx/Vivado/2019.2/settings64.sh
 
 # RISC-V环境变量
 export RISCV="/usr/local/riscv"
@@ -91,8 +91,8 @@ export NVM_DIR="${HOME}/.nvm"
 [ -s "${NVM_DIR}/bash_completion" ] && \. "${NVM_DIR}/bash_completion"  # This loads nvm bash_completion
 
 # 导入 Ubuntu 平台特定配置
-if [ "$UBUNTU_SPECIAL_CONFIG" = "true" ] && [ -d "/home/zzq/.zzq_config/bashrc/special_bashrc/ubuntu" ]; then
-    for file in "/home/zzq/.zzq_config/bashrc/special_bashrc/ubuntu"/*.sh; do
+if [ "$UBUNTU_SPECIAL_CONFIG" = "true" ] && [ -d "${HOME}.zzq_config/bashrc/special_bashrc/ubuntu" ]; then
+    for file in "${HOME}.zzq_config/bashrc/special_bashrc/ubuntu"/*.sh; do
         if [ -f "$file" ]; then
             source "$file"
         fi
@@ -101,8 +101,8 @@ fi
 
 
 # 导入 WSL 平台特定配置
-if [ "$WSL_SPECIAL_CONFIG" = "true" ] && [ -d "/home/zzq/.zzq_config/bashrc/special_bashrc/wsl" ]; then
-    for file in "/home/zzq/.zzq_config/bashrc/special_bashrc/wsl"/*.sh; do
+if [ "$WSL_SPECIAL_CONFIG" = "true" ] && [ -d "${HOME}.zzq_config/bashrc/special_bashrc/wsl" ]; then
+    for file in "${HOME}.zzq_config/bashrc/special_bashrc/wsl"/*.sh; do
         if [ -f "$file" ]; then
             source "$file"
         fi
@@ -110,8 +110,8 @@ if [ "$WSL_SPECIAL_CONFIG" = "true" ] && [ -d "/home/zzq/.zzq_config/bashrc/spec
 fi
 
 # 导入私有配置
-if  [ -d "/home/zzq/.zzq_config/bashrc/private_bashrc" ]; then
-    for file in "/home/zzq/.zzq_config/bashrc/private_bashrc"/*.sh; do
+if  [ -d "${HOME}.zzq_config/bashrc/private_bashrc" ]; then
+    for file in "${HOME}.zzq_config/bashrc/private_bashrc"/*.sh; do
         if [ -f "$file" ]; then
             source "$file"
         fi
