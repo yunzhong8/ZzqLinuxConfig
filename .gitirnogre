@@ -1,0 +1,23 @@
+# 忽略bashrc目录下的private目录内的所有内容
+# 操作系统相关
+.DS_Store               # macOS
+Thumbs.db               # Windows
+*.swp                   # Vim 交换文件
+*.swo                   # Vim 交换文件
+
+# 编辑器/IDE 配置
+.idea/                  # IntelliJ IDEA
+.vscode/                # Visual Studio Code
+*.suo                   # Visual Studio
+*.ntvs*                 # Visual Studio
+*.njsproj               # Visual Studio
+*.sln                   # Visual Studio
+*.sw?                   # Vim
+
+# 日志和临时文件
+logs/
+*.log
+tmp/
+temp/
+# 忽略所有以 private 开头的目录下的所有内容
+private*/**

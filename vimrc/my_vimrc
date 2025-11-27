@@ -99,3 +99,24 @@ vnoremap <C-z-x> "+d
 
 " 使用ctlr+s表示保存
 nnoremap <C-z-s> :w<CR>
+
+# 导入私有配置
+" 定义你想要加载的配置文件目录
+let s:config_dir = $HOME . '/.zzq_config/vimrc/private_vimrc/'
+
+" 检查目录是否存在
+if isdirectory(s:config_dir)
+    " 使用 glob() 获取目录下所有 .vim 结尾的文件
+    " rglob() 会递归搜索子目录，如果你不需要递归，可以使用 glob()
+    " 注意:glob()/rglob() 返回的是一个以换行符分隔的字符串
+    let s:config_files = split(glob(s:config_dir . '*.vim'), '\n')
+
+    " 遍历文件列表并逐个 source
+    for s:file in s:config_files
+        " 确保文件存在且是普通文件（不是目录）
+        if filereadable(s:file)
+            execute 'source' s:file
+            echom "Sourced: " . fnamemodify(s:file, ':t') " 可选：在命令行显示加载的文件名
+        endif
+    endfor
+endif

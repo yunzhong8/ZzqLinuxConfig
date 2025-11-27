@@ -17,7 +17,7 @@ export EXE_SCIRPT_PATH="${HOME}/.zzq_config/zzqScript"
 export ZCONFIG_PATH="${HOME}/.zzq_config"
 # 这保存的是配到系统环境变量中的脚本
 export OVERALL_EXE_BASIC_SCRIPT_PATH="${HOME}/.zzq_config/zzqScript/OverallScript/basic"
-
+export PRIVATE_EXE_SCRIPT_PATH="${HOME}/.zzq_config/zzqScript/privateScript/"
 # 这里保存的脚本是不会配到环境变量中去的
 export PART_EXE_SCRIPT_PATH="${HOME}/.zzq_config/zzqScript/PartScript/"
 
@@ -56,6 +56,7 @@ export PATH="/usr/lib/ccache:${PATH}"         # 使用ccache加速gcc
 export PATH="${HOME}/.local/bin:${PATH}"      # 用户本地安装的工具
 export PATH="/usr/bin:/bin:${PATH}"           # 系统默认bin目录
 export PATH="${OVERALL_EXE_BASIC_SCRIPT_PATH}:${PATH}" # 全局基本脚本目录
+export PATH="${PRIVATE_EXE_SCRIPT_PATH}:${PATH}"       # 私有脚本目录
 #export PATH=$JAVA_HOME/bin:$PATH
 
 #*************************************************alias****************************************************************
@@ -89,3 +90,30 @@ export NVM_DIR="${HOME}/.nvm"
 [ -s "${NVM_DIR}/nvm.sh" ] && \. "${NVM_DIR}/nvm.sh"  # This loads nvm
 [ -s "${NVM_DIR}/bash_completion" ] && \. "${NVM_DIR}/bash_completion"  # This loads nvm bash_completion
 
+# 导入 Ubuntu 平台特定配置
+if [ "$UBUNTU_SPECIAL_CONFIG" = "true" ] && [ -d "/home/zzq/.zzq_config/bashrc/special_bashrc/ubuntu" ]; then
+    for file in "/home/zzq/.zzq_config/bashrc/special_bashrc/ubuntu"/*.sh; do
+        if [ -f "$file" ]; then
+            source "$file"
+        fi
+    done
+fi
+
+
+# 导入 WSL 平台特定配置
+if [ "$WSL_SPECIAL_CONFIG" = "true" ] && [ -d "/home/zzq/.zzq_config/bashrc/special_bashrc/wsl" ]; then
+    for file in "/home/zzq/.zzq_config/bashrc/special_bashrc/wsl"/*.sh; do
+        if [ -f "$file" ]; then
+            source "$file"
+        fi
+    done
+fi
+
+# 导入私有配置
+if  [ -d "/home/zzq/.zzq_config/bashrc/private_bashrc" ]; then
+    for file in "/home/zzq/.zzq_config/bashrc/private_bashrc"/*.sh; do
+        if [ -f "$file" ]; then
+            source "$file"
+        fi
+    done
+fi
