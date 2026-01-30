@@ -1,0 +1,140 @@
+#!/bin/bash
+set -euo pipefail  # 严格模式，出错立即退出，避免隐藏问题
+
+# ========== 配置区（请根据实际路径修改）==========
+# 源目录（要对比的基准目录）
+NLRebase="/nfs/home/zhengzhongqiang/WorkNL/xs-env_v3_NLRebaseCI/XiangShan"
+
+# 对比目录（和源目录对比的目录）
+NLRebaseCIOnlyNL="/nfs/home/zhengzhongqiang/WorkNL/xs-env_v3_NLRebaseCI_OnlyNL/XiangShan"
+
+NLRebaseCIWave="/nfs/home/zhengzhongqiang/WorkNL/xs-env_v3_NLRebaseCI_Wave/XiangShan"
+
+# base
+NLRebaseCIBase="/nfs/home/zhengzhongqiang/WorkNL/xs-env_v3_NLRebaseCIBase/XiangShan"
+
+#SRC_ROOT的新内容到->DST_ROOT的
+# 源目录（要对比的基准目录）
+SRC_ROOT=$NLRebase
+# 对比目录（和源目录对比的目录）
+DST_ROOT=$NLRebaseCIOnlyNL
+# DST_ROOT=$NLRebaseCIWave
+# 要打补丁的目标目录
+TARGET_DIR=$DST_ROOT
+# 临时补丁文件路径
+PATCH_FILE="/tmp/scala_diff.patch"
+# 仅对比的文件后缀（固定为.scala）
+FILTER_SUFFIX=".scala"
+# ================================================
+
+# 第一步：检查目录是否存在
+check_dir() {
+  if [ ! -d "$1" ]; then
+    echo "错误：目录不存在 → $1"
+    exit 1
+  fi
+}
+check_dir "$SRC_ROOT"
+check_dir "$DST_ROOT"
+check_dir "$TARGET_DIR"
+
+# 第二步：仅对比.scala文件，生成补丁（过滤 .git/build，只保留 scala 文件）
+echo -e "\n===== 开始对比仅 .scala 文件的差异 ====="
+# 清空旧补丁文件
+> "$PATCH_FILE"
+
+# 说明：为了保证补丁可以应用到目标目录（将目标变为源的状态），
+# 我们需要生成将 DST -> SRC 的 diff（old=dst, new=src）。
+# 对于源存在但目标不存在的文件，使用 /dev/null 作为 old 文件（表示新增）；
+# 对于目标存在但源不存在的文件，使用 /dev/null 作为 new 文件（表示删除）。
+
+# 处理在源中存在的文件（新增或修改），但只限于特定子目录以加快并限定范围
+ALLOWED_DIRS=("coupledL2" "src" "utility")
+for d in "${ALLOWED_DIRS[@]}"; do
+  if [ -d "$SRC_ROOT/$d" ]; then
+    find "$SRC_ROOT/$d" -name "*.scala" -print0 | while IFS= read -r -d '' src_file; do
+      rel_path="${src_file#$SRC_ROOT/}"
+      dst_file="$DST_ROOT/$rel_path"
+      if [ -e "$dst_file" ]; then
+        # 目标存在 -> 生成将 dst -> src 的 diff
+        diff -uN "$dst_file" "$src_file" >> "$PATCH_FILE" || true
+      else
+        # 目标不存在 -> 生成新增文件的 diff（old=/dev/null, new=src）
+        diff -uN /dev/null "$src_file" >> "$PATCH_FILE" || true
+      fi
+    done
+  fi
+done
+
+# 处理在目标中存在但在源中已删除的文件（生成删除补丁），只检查允许的子目录
+for d in "${ALLOWED_DIRS[@]}"; do
+  if [ -d "$DST_ROOT/$d" ]; then
+    find "$DST_ROOT/$d" -name "*.scala" -print0 | while IFS= read -r -d '' dst_file; do
+      rel_path="${dst_file#$DST_ROOT/}"
+      src_file="$SRC_ROOT/$rel_path"
+      if [ ! -e "$src_file" ]; then
+        # 源不存在 -> 生成将 dst -> /dev/null 的 diff（表示在目标删除该文件）
+        diff -uN "$dst_file" /dev/null >> "$PATCH_FILE" || true
+      fi
+    done
+  fi
+done
+
+# 规范化补丁头部：将绝对路径替换为相对路径（a/... b/...），便于在目标目录用 patch -p1 应用。
+# 只有当补丁中包含以 $DST_ROOT 或 $SRC_ROOT 开头的路径时才进行替换。
+if [ -s "$PATCH_FILE" ]; then
+  # 使用 perl 做前缀替换，保留时间戳和其他字段不变
+  perl -pe '
+    s{^---\s+\Q'"$DST_ROOT"'\E/}{--- a/};
+    s{^\+\+\+\s+\Q'"$SRC_ROOT"'\E/}{+++ b/};
+  ' "$PATCH_FILE" > "$PATCH_FILE".fixed && mv "$PATCH_FILE".fixed "$PATCH_FILE"
+fi
+
+# 检查是否有差异
+if [ ! -s "$PATCH_FILE" ]; then
+  echo "提示：未发现 .scala 文件的差异，无需打补丁！"
+  rm -f "$PATCH_FILE"
+  exit 0
+fi
+
+# 第三步：显示差异概要，等待用户确认
+echo -e "\n===== 发现 .scala 文件差异，差异概要如下 ====="
+# 显示差异文件列表（不打印具体内容，避免刷屏）
+# 说明：补丁由 diff 生成，头部为 '--- a/...' 和 '+++ b/...'，下面提取新文件路径作为概要
+# 显示新增/修改/删除目标路径（从 +++ 行提取 new 文件路径）
+grep -E "^\+\+\+ " "$PATCH_FILE" | sed -E 's/^\+\+\+\s+b\///' | awk '{print $1}' | sed 's/^/  /'
+echo -e "\n============================================"
+read -p "是否确认将上述差异 patch 到目标目录 [$TARGET_DIR]?(y/n) " -n 1 -r
+echo  # 换行
+
+# 第四步：根据用户输入执行patch
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+  echo -e "\n===== 开始应用补丁到目标目录 → $TARGET_DIR ====="
+  # 切换到目标目录（patch必须在目标目录执行）
+  cd "$TARGET_DIR"
+  
+  # 先模拟打补丁（检查冲突，不实际修改文件）
+  echo "第一步：模拟打补丁（检查冲突）..."
+  patch -p1 --dry-run < "$PATCH_FILE"
+  if [ $? -ne 0 ]; then
+    echo "错误：模拟打补丁失败（存在冲突），请先解决冲突！"
+    exit 1
+  fi
+  
+  # 正式打补丁
+  echo "第二步：正式应用补丁..."
+  patch -p1 < "$PATCH_FILE"
+  echo -e "\n===== 补丁应用完成！====="
+  
+  # 可选：验证补丁后的.scala文件
+  echo "补丁后目标目录的 .scala 文件列表："
+  find "$TARGET_DIR" -name "*$FILTER_SUFFIX" | head -10  # 仅显示前10个
+else
+  echo -e "\n===== 用户取消打补丁，退出操作 ====="
+  rm -f "$PATCH_FILE"
+  exit 0
+fi
+
+# 清理临时文件
+rm -f "$PATCH_FILE"
+echo -e "\n===== 操作完成！====="

@@ -1,0 +1,91 @@
+#!/bin/bash
+set -uo pipefail  # 严格模式，出错立即退出，避免隐藏问题
+
+# ===================== 配置区（用户自定义）=====================
+# 源文件所在的根目录（可修改）
+SRC_ROOT="/nfs/home/zhengzhongqiang/WorkNL/xs-env_v3_NLlowestPriority/XiangShan"
+# 目标文件所在的根目录（可修改）
+DST_ROOT="/nfs/home/zhengzhongqiang/WorkNL/xs-env_v3_NLRebaseCI/XiangShan"
+# 要处理的文件相对路径列表（相对于根目录，可修改，按顺序处理）
+FILES=(
+  "coupledL2/src/main/scala/coupledL2/prefetch/NextLinePrefetchIdeal.scala"
+  "coupledL2/src/main/scala/coupledL2/prefetch/NextLineSample.scala"
+  "coupledL2/src/main/scala/coupledL2/prefetch/Prefetcher.scala"
+  "coupledL2/src/main/scala/coupledL2/prefetch/NextLinePattern.scala"
+)
+# 临时补丁文件路径（无需修改，自动清理）
+TEMP_PATCH="/tmp/single_file_patch.diff"
+# ==============================================================
+
+check_file() {
+  if [ ! -f "$1" ]; then
+    echo "错误：文件不存在 → $1"
+    exit 1
+  fi
+}
+
+# 遍历 FILES 列表，按顺序处理每个文件
+for FILE_REL_PATH in "${FILES[@]}"; do
+  echo -e "\n=============================================="
+  echo "处理文件： $FILE_REL_PATH"
+  echo "=============================================="
+
+  # 拼接源文件和目标文件的完整路径
+  SRC_FILE="${SRC_ROOT}/${FILE_REL_PATH}"
+  DST_FILE="${DST_ROOT}/${FILE_REL_PATH}"
+
+  # 第一步：检查文件是否存在
+  check_file "$SRC_FILE"
+  check_file "$DST_FILE"
+
+  # 第二步：备份目标文件（避免误操作）
+  echo "===== 1. 备份目标文件 ====="
+  DST_BACKUP="${DST_FILE}.bak_$(date +%Y%m%d_%H%M%S)"  # 加时间戳，避免覆盖
+  mkdir -p "$(dirname "$DST_BACKUP")"
+  cp -f "$DST_FILE" "$DST_BACKUP"
+  echo "目标文件已备份到：$DST_BACKUP"
+
+  # 第三步：生成单个文件的补丁
+  # 说明：old=目标(DST)，new=源(SRC)，生成的补丁用于将目标文件更新为与源文件一致
+  echo -e "\n===== 2. 生成文件差异补丁 (DST -> SRC) ====="
+  diff -u "$DST_FILE" "$SRC_FILE" > "$TEMP_PATCH" || true
+
+  # 检查是否有差异
+  if [ ! -s "$TEMP_PATCH" ]; then
+    echo "提示：源文件和目标文件无差异，无需打补丁！"
+    rm -f "$TEMP_PATCH"
+    continue
+  fi
+
+  # 第四步：交互式确认（可选，增强安全性）
+  echo -e "\n===== 3. 差异预览（前20行）====="
+  head -20 "$TEMP_PATCH"
+  read -p "是否确认将上述差异应用到目标文件？(y/n) " -n 1 -r
+  echo  # 换行
+
+  if [[ $REPLY =~ ^[Yy]$ ]]; then
+    # 第五步：应用补丁到目标文件
+    echo -e "\n===== 4. 应用补丁到目标文件 ====="
+    # -p0：不忽略任何路径，精准匹配单个文件
+    patch -p0 "$DST_FILE" < "$TEMP_PATCH"
+    echo -e "\n===== 补丁应用完成！====="
+
+    # 验证补丁结果
+    echo -e "\n===== 5. 验证补丁结果 ====="
+    if diff -q "$SRC_FILE" "$DST_FILE"; then
+      echo "✅ 源文件和目标文件已完全一致！"
+    else
+      echo "⚠️  源文件和目标文件仍有差异（可能是补丁未完全应用），请检查！"
+    fi
+  else
+    echo -e "\n===== 用户取消对 $FILE_REL_PATH 的操作，继续下一个文件 ====="
+    rm -f "$TEMP_PATCH"
+    continue
+  fi
+
+  # 清理临时文件
+  rm -f "$TEMP_PATCH"
+  echo -e "\n===== $FILE_REL_PATH 操作完成！====="
+done
+
+echo -e "\n===== 所有文件处理完成！====="

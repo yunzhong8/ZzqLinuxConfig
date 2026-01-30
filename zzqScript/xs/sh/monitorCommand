@@ -1,0 +1,40 @@
+
+nitor_emu.sh
+#!/bin/bash
+# 第一步：执行 emu 命令并记录 PID
+cd /nfs/home/zhengzhongqiang/Work/xs-env_v3/XiangShan/
+NOOP_HOME=/nfs/home/zhengzhongqiang/Work/xs-env_v3/XiangShan \
+numactl -m 0 -C 8-15 ./build/emu \
+--diff ./ready-to-run/riscv64-nemu-interpreter-so \
+--enable-fork -W 20000000 -I 40000000 \
+-r /nfs-nvme/home/share/zyy/shared_payloads/old-gcpt-restorer/gcpt.bin \
+-i /nfs/home/share/liyanqin/spec06_rv64gcb_O3_20m_gcc12.2.0-intFpcOff-jeMalloc/checkpoint-0-0-0/mcf/10688/_10688_0.135073_.gz \
+-s 5305 > emu-run.log 2>&1 &
+
+EMU_PID=$!
+echo "=== 开始监控 emu 进程（PID：$EMU_PID）==="
+echo "监控日志将保存到：emu-monitor-$EMU_PID/ 目录"
+mkdir -p emu-monitor-$EMU_PID
+
+# 第二步：后台启动所有监控
+# 1. 系统日志实时监控
+journalctl -f -o short-monotonic | grep -E "[$EMU_PID]|emu|nfs|OOM|kill" > emu-monitor-$EMU_PID/system-journal.log &
+JOURNAL_PID=$!
+
+# 2. 内核日志实时监控
+dmesg -w | grep -E "[$EMU_PID]|emu|nfs|oom" > emu-monitor-$EMU_PID/kernel-dmesg.log &
+DMESG_PID=$!
+
+# 3. 进程资源监控
+pidstat -p $EMU_PID -r -u -d -t 1 > emu-monitor-$EMU_PID/resource-usage.log &
+PIDSTAT_PID=$!
+
+# 4. 系统调用跟踪
+strace -o emu-monitor-$EMU_PID/strace.log -f -tt -T -e trace=file,network,process -p $EMU_PID &
+STRACE_PID=$!
+
+# 第三步：等待 emu 进程结束，停止所有监控
+wait $EMU_PID
+echo "=== emu 进程执行结束（退出码：$?）==="
+kill $JOURNAL_PID $DMESG_PID $PIDSTAT_PID $STRACE_PID
+echo "=== 所有监控已停止，日志保存在 emu-monitor-$EMU_PID/ ==="

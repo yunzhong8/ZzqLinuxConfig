@@ -1,0 +1,468 @@
+#!/bin/bash
+
+########## 1. parameters: YOU SHOULD CONFIRM ##########
+DIVLINE=$(perl -E "print '=' x 20")
+# server_list="node005 node006 node007 node008 node009 node027 node028"
+
+default_server_list="open09 open10 open11 open12 open13 open14 open15"
+
+while true; do
+    echo "请输入服务器列表（用空格分隔，直接回车使用默认）："
+    read user_server_list
+
+    if [[ -z "$user_server_list" ]]; then
+        server_list="$default_server_list"
+        break
+    else
+        # 检查每个服务器名是否以 open 开头
+        valid=true
+        for s in $user_server_list; do
+            if [[ ! "$s" =~ ^open ]]; then
+                echo "[ERROR] 服务器名 '$s' 必须以 open 开头，请重新输入！"
+                valid=false
+                break
+            fi
+        done
+        if [[ "$valid" == "true" ]]; then
+            server_list="$user_server_list"
+            break
+        fi
+    fi
+done
+
+
+threads=8
+
+# 获取脚本名称（不含路径）
+SCRIPT_NAME=$(basename "$0")
+
+# 保存所有命令行参数
+ALL_ARGS="$@"
+
+function usage() {
+cat <<EOF
+Usage: $(basename "$0") <XSHome> <cov> <mode> [tag] [nl]
+
+Required:
+    XSHome: path to XiangShan directory
+    cov   : 1.0 | 0.3 | 0.8
+    mode  : mt | v3 | v3sim
+
+Optional:
+    tag   : extra suffix for SPEC_DIR (required when git is dirty)
+    nl    : 1 to use DefaultConfigWithNL, 0 or omit for DefaultConfig
+
+Defaults:
+    server_list="$server_list"
+    threads=$threads
+
+Examples:
+    $(basename "$0") /path/to/XiangShan 0.3 v3
+    $(basename "$0") /path/to/XiangShan 1.0 v3sim mytag
+    $(basename "$0") /path/to/XiangShan 0.3 v3 mytag 1
+EOF
+}
+
+if [[ $1 == "-h" || $1 == "--help" ]]; then
+        usage
+        exit 0
+fi
+
+########## 2. env ##########
+function set_env(){
+    # xs_pwd=$(pwd)
+    xs_pwd=$1
+    cd $xs_pwd
+    cd ../
+    . ./env.sh
+    cd $xs_pwd
+    export DRAMSIM3_HOME=/nfs/home/share/ci-workloads/DRAMsim3
+    export NOOP_HOME=$xs_pwd
+    echo "NEW NOOP_HOME: $NOOP_HOME"
+    
+    PERF_HOME=/nfs/home/share/liyanqin/env-scripts/perf
+
+    gcc12O3_1=/nfs-nvme/home/share/checkpoints_profiles/spec06_rv64gcb_o3_20m_gcc12-fpcontr-off
+    cpt_path_1=$gcc12O3_1/take_cpt
+    cover1_path_1=$gcc12O3_1/json/o3_spec_fp_int-with-jemXalanc.json
+    cover3_path_1=$PERF_HOME/json/gcc12o3-fpcontr-off-0.3.json
+    cover8_path_1=$PERF_HOME/json/gcc12o3-fpcontr-off-0.8.json
+
+    gcc12O3_2=/nfs/home/share/liyanqin/spec06_rv64gcb_O3_20m_gcc12.2.0-intFpcOff-jeMalloc
+    cpt_path_2=$gcc12O3_2/checkpoint-0-0-0
+    cover1_path_2=$gcc12O3_2/checkpoint-0-0-0/cluster-0-0.json
+    cover3_path_2=$PERF_HOME/json/gcc12o3-incFpcOff-jeMalloc-0.3.json
+    cover8_path_2=$PERF_HOME/json/gcc12o3-incFpcOff-jeMalloc-0.8.json
+    cover3_path_zzq=/nfs/home/zhengzhongqiang/Work/script/mcf_gcc12o3-incFpcOff-jeMalloc-0.3.json
+
+    SPEC17_GCC12_dir=/nfs/home/share/liyanqin/spec17-rv64gcb-O3-20m-gcc12.2.0-mix-with-special_wrf
+    SPEC17_GCC12_cpt_PATH=$SPEC17_GCC12_dir/checkpoint-0-0-0/
+    SPEC17_GCC12_json_PATH=$SPEC17_GCC12_dir/checkpoint-0-0-0/cluster-0-0.json
+}
+
+# 日志记录函数
+log_message() {
+    local message="$1"
+    echo "$message"
+    if [ -n "$LOG_FILE" ] && [ -d "$(dirname "$LOG_FILE")" ]; then
+        echo "$message" >> "$LOG_FILE"
+    fi
+}
+
+# 记录用户输入（带提示）
+log_read() {
+    local prompt="$1"
+    local var_name="$2"
+    read -p "$prompt" $var_name
+    local value="${!var_name}"
+    if [ -n "$LOG_FILE" ] && [ -d "$(dirname "$LOG_FILE")" ]; then
+        echo "[INPUT] $prompt$value" >> "$LOG_FILE"
+    fi
+}
+
+# 如果没有传入 XSHome,则使用当前目录
+XSHome=${1:-$(pwd)}
+
+# 检查 XSHome 目录最底层是否为 XiangShan
+xs_basename=$(basename "$XSHome")
+if [[ "$xs_basename" != "XiangShan" ]]; then
+    echo "[ERROR] XSHome directory must be named 'XiangShan', got: $XSHome"
+    exit 1
+fi
+
+# 检查目录是否存在
+if [[ ! -d "$XSHome" ]]; then
+    echo "[ERROR] XSHome directory does not exist: $XSHome"
+    exit 1
+fi
+
+set_env $XSHome
+
+########## 3. config ##########
+version="kunminghu"
+cpt_path=$cpt_path_2
+json_path=$cover1_path_2
+
+is_dirty=$(git status --porcelain | wc -l)
+if [[ $is_dirty -gt 0 ]]; then
+    [[ $# -ge 4 ]] || { echo "[ERROR] git dirty: need at least 4 args -> <path> <cov> <mode> <tag> [nl]"; exit 1; }
+else
+    [[ $# -ge 3 ]] || { echo "[ERROR] git clean: need at least 3 args -> <path> <cov> <mode> [tag] [nl]"; exit 1; }
+fi
+
+cov=$2
+mode=$3
+if [[ -n "$4" ]]; then
+    tag="-$4"
+else
+    tag=""
+fi
+
+case $cov in 
+"1.0")  json_path=$cover1_path_2;;
+"0.3")  json_path=$cover3_path_2;;
+"0.8")  json_path=$cover8_path_2;;
+"mcf")  json_path=$cover3_path_zzq;;
+*)      echo "[ERROR] coverage needs to be 1.0/0.3/0.8/mcf"
+        exit -1;;
+esac
+
+case $mode in 
+"mt")       all_spec_dir="/nfs/home/share/`whoami`/perf-report-master";;
+"v3")       all_spec_dir="/nfs/home/share/`whoami`/perf-report-kmhv3";;
+"v3sim")    all_spec_dir="/nfs/home/share/`whoami`/perf-report-kmhv3-simfrontend";;
+"getname")  echo "[NOTE] only get the name of SPEC_DIR"
+            all_spec_dir="/nfs/home/share/liyanqin/perf-report-kmhv3"
+            ;;
+*)          echo "[ERROR] mode needs to be mt/v3/v3sim"
+            exit -1;;
+esac
+
+SHORT_SHA=$(git rev-parse --short HEAD)
+DATE=$(git show -s --format=%cd --date=format:%y%m%d HEAD)
+
+env_name=$(basename "$(dirname "$XSHome")")
+echo "[INFO] Environment name: $env_name"
+    
+SPEC_DIR="$all_spec_dir/cr${DATE}-${SHORT_SHA}$tag/$env_name"
+
+# 初始化日志文件
+# 如果 SPEC_DIR 已存在，提示用户是否先删除（以避免旧文件干扰）
+if [ -e "$SPEC_DIR" ]; then
+    echo "警告：目标目录已存在： $SPEC_DIR"
+    read -p "是否先删除该目录再创建新的? (y/n, 默认 n): " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        echo "正在删除 $SPEC_DIR ..."
+        rm -rf -- "$SPEC_DIR"
+        # 如果删除失败，退出以避免后续写入错误
+        if [ -e "$SPEC_DIR" ]; then
+            echo "错误：无法删除 $SPEC_DIR，请检查权限或手动清理。"
+            exit 1
+        fi
+    else
+        echo "保留已存在的目录： $SPEC_DIR"
+    fi
+fi
+
+mkdir -p "$SPEC_DIR"
+LOG_FILE="$SPEC_DIR/${SCRIPT_NAME}.log"
+
+
+# 记录脚本头信息
+{
+    echo "========================================"
+    echo "脚本运行日志: $SCRIPT_NAME"
+    echo "开始时间: $(date)"
+    echo "========================================"
+    echo ""
+    echo "[命令行参数]"
+    echo "完整命令: $0 $ALL_ARGS"
+    echo "参数数量: $#"
+    echo "  XSHome: $XSHome"
+    echo "  cov: $cov"
+    echo "  mode: $mode"
+    echo "  tag: $tag"
+    echo ""
+    echo "[环境信息]"
+    echo "  用户: $(whoami)"
+    echo "  主机: $(hostname)"
+    echo "  工作目录: $(pwd)"
+    echo "  NOOP_HOME: $NOOP_HOME"
+    echo "  SPEC_DIR: $SPEC_DIR"
+    echo "  env_name: $env_name"
+    echo ""
+    echo "[Git 信息]"
+    echo "  SHORT_SHA: $SHORT_SHA"
+    echo "  DATE: $DATE"
+    echo "  is_dirty: $is_dirty"
+    echo ""
+    echo "[配置信息]"
+    echo "  json_path: $json_path"
+    echo "  cpt_path: $cpt_path"
+    echo "  server_list: $server_list"
+    echo "  threads: $threads"
+    echo ""
+} > "$LOG_FILE"
+
+echo "$SPEC_DIR"
+if [[ $mode == "getname" ]]; then
+    exit 0
+fi
+
+use_nl=${5:-0}
+if [[ "$use_nl" == "1" ]]; then
+    Config=DefaultConfigWithNL
+    log_message "[INFO] Using DefaultConfigWithNL configuration"
+else
+    Config=DefaultConfig
+    log_message "[INFO] Using DefaultConfig configuration"
+fi
+
+# 记录配置选择
+echo "  Config: $Config" >> "$LOG_FILE"
+echo "  use_nl: $use_nl" >> "$LOG_FILE"
+echo "" >> "$LOG_FILE"
+
+########## 4. make ##########
+log_message "========== make start at $(date): $SPEC_DIR =========="
+
+# 检查 emu 存在情况
+spec_emu_exists=false
+build_emu_exists=false
+
+if [ -e "$SPEC_DIR/emu" ]; then
+    spec_emu_exists=true
+fi
+
+if [ -e "$NOOP_HOME/build/emu" ]; then
+    build_emu_exists=true
+fi
+
+# 记录 emu 检测结果
+{
+    echo "[EMU 检测]"
+    echo "  spec_emu_exists: $spec_emu_exists"
+    echo "  build_emu_exists: $build_emu_exists"
+} >> "$LOG_FILE"
+
+# 根据 emu 存在情况决定行为
+if [ "$spec_emu_exists" = true ] && [ "$build_emu_exists" = true ]; then
+    # 两个 emu 都存在，让用户选择
+    echo ""
+    echo "========================================="
+    echo "检测到多个 emu 文件:"
+    echo "  1) 使用 $SPEC_DIR/emu"
+    echo "  2) 使用 $NOOP_HOME/build/emu"
+    echo "  3) 重新编译"
+    echo "========================================="
+    log_read "请选择 (1/2/3): " emu_choice
+    
+    case "$emu_choice" in
+        1)
+            log_message "[INFO] 使用 $SPEC_DIR/emu"
+            mkdir -p $NOOP_HOME/build
+            cp $SPEC_DIR/emu $NOOP_HOME/build/emu
+            cp $SPEC_DIR/constantin.txt $NOOP_HOME/build/constantin.txt 2>/dev/null || true
+            skip_build=true
+            ;;
+        2)
+            log_message "[INFO] 使用 $NOOP_HOME/build/emu"
+            mkdir -p $SPEC_DIR
+            cp $NOOP_HOME/build/emu $SPEC_DIR/emu
+            cp $NOOP_HOME/build/constantin.txt $SPEC_DIR/constantin.txt 2>/dev/null || true
+            skip_build=true
+            ;;
+        3)
+            log_message "[INFO] 重新编译 emu"
+            skip_build=false
+            ;;
+        *)
+            log_message "[ERROR] 无效选择，退出"
+            exit 1
+            ;;
+    esac
+
+elif [ "$spec_emu_exists" = true ]; then
+    # 只有 SPEC_DIR/emu 存在
+    log_message "[INFO] 检测到 $SPEC_DIR/emu 存在"
+    log_read "是否使用现有的 emu? (y/n，默认 y): " use_existing
+    use_existing=${use_existing:-y}
+    
+    if [[ "$use_existing" == "y" || "$use_existing" == "Y" ]]; then
+        log_message "[INFO] 使用 $SPEC_DIR/emu"
+        mkdir -p $NOOP_HOME/build
+        cp $SPEC_DIR/emu $NOOP_HOME/build/emu
+        cp $SPEC_DIR/constantin.txt $NOOP_HOME/build/constantin.txt 2>/dev/null || true
+        skip_build=true
+    else
+        log_message "[INFO] 重新编译 emu"
+        skip_build=false
+    fi
+
+elif [ "$build_emu_exists" = true ]; then
+    # 只有 build/emu 存在
+    log_message "[INFO] 检测到 $NOOP_HOME/build/emu 存在"
+    log_read "是否使用现有的 emu? (y/n，默认 y): " use_existing
+    use_existing=${use_existing:-y}
+    
+    if [[ "$use_existing" == "y" || "$use_existing" == "Y" ]]; then
+        log_message "[INFO] 使用 $NOOP_HOME/build/emu"
+        mkdir -p $SPEC_DIR
+        cp $NOOP_HOME/build/emu $SPEC_DIR/emu
+        cp $NOOP_HOME/build/constantin.txt $SPEC_DIR/constantin.txt 2>/dev/null || true
+        skip_build=true
+    else
+        log_message "[INFO] 重新编译 emu"
+        skip_build=false
+    fi
+
+else
+    # 两个 emu 都不存在
+    log_message "[INFO] 未检测到已有的 emu，开始编译"
+    skip_build=false
+fi
+
+# 记录编译决策
+echo "  skip_build: $skip_build" >> "$LOG_FILE"
+echo "" >> "$LOG_FILE"
+
+# 执行编译或跳过
+if [ "$skip_build" = false ]; then
+    log_message "[BUILD] 开始编译..."
+    echo "[BUILD] 编译开始时间: $(date)" >> "$LOG_FILE"
+
+    # 构造编译命令字符串
+    if [ "$mode" == "v3sim" ] ; then
+        build_cmd="python3 $NOOP_HOME/scripts/xiangshan.py --build \
+            --yaml-config $NOOP_HOME/src/main/resources/config/Default.yml \
+            --dramsim3 $DRAMSIM3_HOME --with-dramsim3 \
+            --config $Config \
+            --with-constantin \
+            --threads $threads --trace-fst \
+            --simfrontend"
+    else
+        build_cmd="python3 $NOOP_HOME/scripts/xiangshan.py --build \
+            --dramsim3 $DRAMSIM3_HOME --with-dramsim3 \
+            --threads $threads --trace-fst \
+            --config $Config \
+            --with-constantin \
+            --pgo $NOOP_HOME/ready-to-run/coremark-2-iteration.bin \
+            --llvm-profdata llvm-profdata"
+    fi
+
+    # 记录编译命令到日志
+    echo "[BUILD] 编译命令：" >> "$LOG_FILE"
+    echo "$build_cmd" >> "$LOG_FILE"
+    echo "" >> "$LOG_FILE"
+
+    # 执行编译
+    python3 $NOOP_HOME/scripts/xiangshan.py --clean
+    eval "$build_cmd"
+
+    echo "[BUILD] 编译结束时间: $(date)" >> "$LOG_FILE"
+    
+    # 编译完成后复制到两个位置
+    mkdir -p $SPEC_DIR
+    cp $NOOP_HOME/build/emu $SPEC_DIR/emu
+    cp $NOOP_HOME/build/constantin.txt $SPEC_DIR/constantin.txt.bak
+    
+    if [ -e "$SPEC_DIR/constantin.txt" ]; then
+        cp $SPEC_DIR/constantin.txt $NOOP_HOME/build/constantin.txt
+    else
+        cp $NOOP_HOME/build/constantin.txt $SPEC_DIR/constantin.txt
+    fi
+fi
+
+log_message "========== make end at $(date): $SPEC_DIR =========="
+
+
+########## 5. run ##########
+log_message "********** cal start at $(date): $SPEC_DIR **********"
+echo "[RUN] 运行开始时间: $(date)" >> "$LOG_FILE"
+
+# # 可选：提取为变量，方便修改
+GCPT_RESTORER="/nfs-nvme/home/share/zyy/shared_payloads/old-gcpt-restorer/gcpt.bin"
+CHECKPOINT_FILE="/nfs/home/share/liyanqin/spec06_rv64gcb_O3_20m_gcc12.2.0-intFpcOff-jeMalloc/checkpoint-0-0-0/mcf/12253/_12253_0.137576_.gz"
+
+cd $NOOP_HOME
+(time ./build/emu \
+    --diff ./ready-to-run/riscv64-nemu-interpreter-so \
+    --dump-wave \
+    -b 40000000 \
+    -e 50000000 \
+    -W 20000000 \
+    -I 40000000 \
+    -r $GCPT_RESTORER \
+    -i $CHECKPOINT_FILE \
+    -s 4564 \
+) 2>&1 | tee $SPEC_DIR/zzq_run.log
+
+# cd $PERF_HOME
+# if [ "$mode" == "v3sim" ]; then
+#     python3 xs_autorun_multiServer.py $cpt_path $json_path --xs $NOOP_HOME --threads $threads --dir $SPEC_DIR --sim-front --resume -L "$server_list" 2>&1 | tee -a "$LOG_FILE"
+# else
+#     python3 xs_autorun_multiServer.py $cpt_path $json_path --xs $NOOP_HOME --threads $threads --dir $SPEC_DIR --resume -L "$server_list" 2>&1 | tee -a "$LOG_FILE"
+# fi
+
+
+mv $NOOP_HOME/build/*.db $SPEC_DIR/ || true
+mv $NOOP_HOME/build/*.vcd $SPEC_DIR/ || true
+
+echo "[RUN] 运行结束时间: $(date)" >> "$LOG_FILE"
+log_message "********** cal end at $(date): $SPEC_DIR **********"
+
+########## 6. score ##########
+log_message "[SCORE] 生成评分报告..."
+python3 xs_autorun_multiServer.py $cpt_path $json_path --xs $NOOP_HOME --threads $threads --dir $SPEC_DIR --report > $SPEC_DIR/score.txt
+
+# 记录结束信息
+{
+    echo ""
+    echo "========================================"
+    echo "脚本运行完成"
+    echo "结束时间: $(date)"
+    echo "========================================"
+} >> "$LOG_FILE"
+
+log_message "[INFO] 日志已保存到: $LOG_FILE"

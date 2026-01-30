@@ -1,0 +1,309 @@
+#! /bin/bash
+all_machines=open01,open02,open03,open04,open05,open06,open07,open08,open09,open10,open11,open12,open13,open14,open15,open16,open17,open18,open19,open20,open23,open24,open25,open26,open27
+
+
+all_machines=(${all_machines//,/ })
+
+# SSH total timeout (seconds) for ssh + command execution. 可根据需要调整
+SSH_TIMEOUT=10
+# SSH 默认选项：非交互、短连接超时、安静输出；加入 StrictHostKeyChecking=no 避免首次接入提示
+SSH_SSH_OPTS='-o ConnectTimeout=5 -q -o BatchMode=yes -o StrictHostKeyChecking=no'
+
+function get_load_and_cores() {
+    machine=$1
+    pipe=$2
+    command=$3
+
+    # Check if SSH connection is possible (use timeout to detect long hangs)
+    if ! timeout ${SSH_TIMEOUT}s ssh $SSH_SSH_OPTS $machine exit; then
+        rc=$?
+            if [ "$rc" -eq 124 ]; then
+                # timeout exit code from coreutils timeout
+                echo "$machine|TIMEOUT|连接时间过长" > $pipe
+            else
+                echo "无法连接到节点 $machine" > $pipe
+            fi
+        return
+    fi
+    
+    # 获取负载平均值或运行命令
+    if [ -z "$command" ]; then
+        # 获取 uptime（带超时保护）
+    if ! load_out=$(timeout ${SSH_TIMEOUT}s ssh $SSH_SSH_OPTS $machine "uptime" 2>/dev/null); then
+            rc=$?
+            if [ "$rc" -eq 124 ]; then
+                echo "$machine|TIMEOUT|连接时间过长" > $pipe
+            else
+                echo "无法获取负载 $machine" > $pipe
+            fi
+            return
+        fi
+        load=$(echo "$load_out" | grep -oP '(?<=average: ).*' | awk -F ',' '{print $1}')
+
+    if ! cores=$(timeout ${SSH_TIMEOUT}s ssh $SSH_SSH_OPTS $machine "nproc" 2>/dev/null); then
+            rc=$?
+            if [ "$rc" -eq 124 ]; then
+                echo "$machine|TIMEOUT|连接时间过长" > $pipe
+            else
+                echo "无法获取核心数 $machine" > $pipe
+            fi
+            return
+        fi
+
+        load_value=$(echo $load | awk '{print $1}')
+        half_cores=$(echo "$cores / 2" | bc)
+        quarter_cores=$(echo "$cores / 4" | bc)
+        eighth_cores=$(echo "$cores / 8" | bc)
+
+        if (( $(echo "$load_value < $half_cores" | bc -l) )); then
+            status="很少"
+        elif (( $(echo "$load_value < $cores" | bc -l) )); then
+            status="过半"
+        else
+            status="过载"
+        fi
+
+    # 以机器|load_value|cores|status 的统一格式输出，便于后续排序与分档
+    echo "$machine|$load_value|$cores|$status" > $pipe
+    else
+    if ! result=$(timeout ${SSH_TIMEOUT}s ssh $SSH_SSH_OPTS $machine "$command" 2>/dev/null); then
+            rc=$?
+            if [ "$rc" -eq 124 ]; then
+                echo "$machine|TIMEOUT|连接时间过长" > $pipe
+            else
+                echo "$machine|CMDERROR|无法执行命令" > $pipe
+            fi
+        else
+            # 命令输出也使用统一分隔格式：machine|CMD|result
+            # 将 result 中的换行替换成 \n
+            result_singleline=$(echo "$result" | tr '\n' '\\n')
+            echo "$machine|CMD|$result_singleline" > $pipe
+        fi
+    fi
+}
+
+# 读取用户输入，是否在当前节点也执行
+echo "Do you want to execute the command on the current node as well? (y/n)"
+read execute_current_node
+
+# 判断输入参数
+if [ $# -eq 0 ]; then
+    command=""
+else
+    command="$*"
+fi
+
+# 创建一个临时命名管道
+PIPE=$(mktemp -u)
+mkfifo $PIPE
+current_node=$(hostname)
+# 如果用户选择在当前节点执行
+if [ "$execute_current_node" == "y" ]; then
+    get_load_and_cores $current_node $PIPE "$command" &
+    pids+=($!)
+else
+    echo "$current_node :skip"
+fi
+
+# 从 all_machines 中安全地移除当前节点（避免留下空元素）
+filtered=()
+for m in "${all_machines[@]}"; do
+    if [ "$m" != "$current_node" ]; then
+        filtered+=("$m")
+    fi
+done
+all_machines=("${filtered[@]}")
+for idx in ${!all_machines[@]}; do
+    machine=${all_machines[$idx]}
+    get_load_and_cores $machine $PIPE "$command" &
+    pids[$idx]=$!
+done
+
+# 接收结果并按 load_value 从高到低排序，同时划分档次
+TMPFILE=$(mktemp)
+# 预期收到的输出行数应基于实际启动的子进程数（pids），比基于 all_machines 更可靠
+expected_count=${#pids[@]}
+
+# 启动一个后台读取器：实时打印收到的每一行并追加到临时文件
+read_count=0
+
+# 把单行原始管道行格式化为可读并带颜色的输出（用于实时显示）
+function format_line() {
+    local line="$1"
+    # 如果不是 pipe 格式，直接输出
+    if [[ "$line" != *"|"* ]]; then
+        echo "$line"
+        return
+    fi
+
+    IFS='|' read -r f1 f2 f3 f4 rest <<< "$line"
+
+    # TIMEOUT 行
+    if [ "$f2" == "TIMEOUT" ]; then
+        echo -e "\e[31m$f1 | TIMEOUT: $f3\e[0m"
+        return
+    fi
+
+    # CMD 行
+    if [ "$f2" == "CMD" ]; then
+        echo -e "\e[33m$f1 | CMD: $f3\e[0m"
+        return
+    fi
+
+    # 普通数值行 machine|load|cores|status
+    if [[ "$f2" =~ ^[0-9]+(\.[0-9]+)?$ && "$f3" =~ ^[0-9]+$ ]]; then
+        local load="$f2"
+        local cores="$f3"
+        local status="$f4"
+        local half quarter eighth
+        half=$(echo "$cores / 2" | bc -l)
+        quarter=$(echo "$cores / 4" | bc -l)
+        eighth=$(echo "$cores / 8" | bc -l)
+
+        local color tier reset
+        reset="\e[0m"
+        if (( $(echo "$load >= $cores" | bc -l) )); then
+            color="\e[31m"; tier="特别多"
+        elif (( $(echo "$load >= $half" | bc -l) )); then
+            color="\e[33m"; tier="过半"
+        elif (( $(echo "$load >= $quarter" | bc -l) )); then
+            color="\e[33m"; tier="适中"
+        elif (( $(echo "$load >= $eighth" | bc -l) )); then
+            color="\e[32m"; tier="较少"
+        else
+            color="\e[32m"; tier="很少"
+        fi
+
+    # 为了列对齐，先用 printf 输出不带颜色的对齐字段，再用颜色包裹 tier 字段
+    # 字段宽度可根据需要调整：machine(12) load(10) cores(6) tier(10)
+    printf "%-12s %-10s %-6s " "$f1" "load=$load" "cores=$cores"
+    # 输出有颜色的 tier（颜色序列不会影响前面已生成的空格）
+    echo -en "$color"
+    printf "%-10s" "$tier"
+    echo -e "$reset | status=$status"
+        return
+    fi
+
+    # 其他情况原样输出
+    echo "$line"
+}
+(
+    while [ "$read_count" -lt "$expected_count" ]; do
+        # 读取带超时，以便定期检查子进程状态，避免永久阻塞
+        if read -r -t 2 line < "$PIPE"; then
+            # 先把原始行追加到临时文件（用于后续分组/排序），再格式化显示
+            echo "$line" >> "$TMPFILE"
+            format_line "$line"
+            read_count=$((read_count+1))
+            continue
+        fi
+
+        # 如果没有读取到数据，检查后台子进程是否还活着
+        any_alive=0
+        for pid in "${pids[@]}"; do
+            if kill -0 "$pid" 2>/dev/null; then
+                any_alive=1
+                break
+            fi
+        done
+
+        # 若没有任何子进程存活，尝试尽可能多地非阻塞读取剩余数据并退出
+        if [ "$any_alive" -eq 0 ]; then
+            while read -r -t 0.1 line < "$PIPE"; do
+                echo "$line" | tee -a "$TMPFILE"
+                read_count=$((read_count+1))
+            done
+            break
+        fi
+        # 若仍有存活子进程，回到循环继续等待
+    done
+) &
+reader_pid=$!
+
+# 等待所有子任务（ssh 命令）完成
+wait ${pids[@]}
+
+# 等待读取器完成（它会在读取到 expected_count 行或所有子进程结束后退出）
+wait $reader_pid
+
+# 将含数字 load_value 的行和其它行分开
+NUMFILE="${TMPFILE}.num"
+OTHFILE="${TMPFILE}.other"
+grep -E '^[^|]+\|[0-9]+(\.[0-9]+)?\|' "$TMPFILE" > "$NUMFILE" || true
+grep -v -E '^[^|]+\|[0-9]+(\.[0-9]+)?\|' "$TMPFILE" > "$OTHFILE" || true
+
+echo "按 load_value 从高到低排序并划分档次："
+if [ -s "$NUMFILE" ]; then
+    GROUP32="${NUMFILE}.g32"
+    GROUP256="${NUMFILE}.g256"
+    GROUPOTH="${NUMFILE}.goth"
+
+    # 先创建空文件，避免后续 sort/awk 在并发或无数据时找不到文件
+    : > "$GROUP32"
+    : > "$GROUP256"
+    : > "$GROUPOTH"
+
+    # 分组：严格按第三字段 cores 值分流（使用 -v 传参更稳健）
+    awk -F'|' -v g32="$GROUP32" -v g256="$GROUP256" -v goth="$GROUPOTH" '
+    $3==32 { print > g32; next }
+    $3==256 { print > g256; next }
+    { print > goth }
+    ' "$NUMFILE"
+
+    format_and_print(){
+        # 读取 stdin（按 load 降序已排序），用 awk 给出颜色和档次
+        awk -F'|' '
+    function classify(load,cores,   half,quarter,eighth,esc,tier,color){
+        esc = sprintf("%c",27)
+        half = cores/2; quarter = cores/4; eighth = cores/8;
+        if (load >= cores) { color = esc "[31m"; tier = "特别多" }         # 红色
+        else if (load >= half) { color = esc "[33m"; tier = "过半" }      # 黄色
+        else if (load >= quarter) { color = esc "[33m"; tier = "适中" }   # 黄色
+        else if (load >= eighth) { color = esc "[32m"; tier = "较少" }   # 绿色
+        else { color = esc "[32m"; tier = "很少" }                        # 绿色
+        return color "|" tier
+    }
+    {
+        c = classify($2,$3)
+        split(c,a,"|")
+        color = a[1]; tier = a[2]
+        esc = sprintf("%c",27); reset = esc "[0m"
+        # 先计算不带颜色的对齐字符串，再在输出中使用颜色包裹
+        tier_padded = sprintf("%-10s", tier)
+        printf "%-12s %-10s %-6s %s%s%s | status=%s\n", $1, "load="$2, "cores="$3, color, tier_padded, reset, $4
+    }'
+    }
+
+    # 先输出 cores==32 的组，再是 256，再是其他
+    if [ -s "$GROUP32" ]; then
+        echo
+        echo "===== cores=32 ====="
+        sort -t'|' -k2,2nr "$GROUP32" | format_and_print
+    fi
+
+    if [ -s "$GROUP256" ]; then
+        echo
+        echo "===== cores=256 ====="
+        sort -t'|' -k2,2nr "$GROUP256" | format_and_print
+    fi
+
+    if [ -s "$GROUPOTH" ]; then
+        echo
+        echo "===== cores=other ====="
+        sort -t'|' -k2,2nr "$GROUPOTH" | format_and_print
+    fi
+
+    rm -f "$GROUP32" "$GROUP256" "$GROUPOTH"
+fi
+
+if [ -s "$OTHFILE" ]; then
+    echo
+    echo "其它输出（无法连接或命令输出等）："
+    cat "$OTHFILE"
+fi
+
+rm -f "$TMPFILE" "$NUMFILE" "$OTHFILE"
+rm $PIPE
+
+
+

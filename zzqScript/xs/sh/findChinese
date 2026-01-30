@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# 遍历所有 scala 文件，只有当文件包含中文时才输出文件名和匹配行
+find . -name "*.scala" -type f -print0 |
+while IFS= read -r -d '' file; do
+  # 使用 Perl 正则类匹配汉字；grep -P 支持 \p{Han}（取决于 grep 版本）
+  matches=$(grep -nP '[\p{Han}]' -- "$file" 2>/dev/null || true)
+  if [ -n "$matches" ]; then
+    echo "=== 处理文件：$file ==="
+    echo "$matches"
+    echo "------------------------"
+  fi
+done

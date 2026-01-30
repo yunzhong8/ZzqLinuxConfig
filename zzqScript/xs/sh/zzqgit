@@ -1,0 +1,391 @@
+#!/bin/bash
+set -euo pipefail
+
+# ===================== 配置区（仅需填写子仓库相对名，无需改路径）=====================
+# 定义需要管理的子仓库列表（相对于当前脚本所在目录的子仓库名）
+SUBMODULES=(
+    "coupledL2"
+    "utility"
+)
+# ====================================================================
+
+# 函数：打印彩色日志
+log_info() {
+    echo -e "\033[32m[INFO] $1\033[0m"
+}
+log_warn() {
+    echo -e "\033[33m[WARN] $1\033[0m"
+}
+log_error() {
+    echo -e "\033[31m[ERROR] $1\033[0m"
+    exit 1
+}
+
+# 函数：验证是否为有效 Git 仓库（兼容 .git 是文件/目录）
+is_git_repo() {
+    local repo_path="$1"
+    # 切换到目标目录，执行 git rev-parse 验证
+    if cd "$repo_path" 2>/dev/null && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        return 0  # 是有效 Git 仓库
+    else
+        return 1  # 不是有效 Git 仓库
+    fi
+}
+
+# 函数：获取脚本执行的绝对路径（核心：解决路径拼接问题）
+get_abs_path() {
+    # 获取脚本所在目录的绝对路径
+    local script_dir=$(pwd)
+    echo "$script_dir"
+}
+
+# 函数：打印帮助信息
+print_help() {
+    local script_name=$(basename "$0")
+    cat << EOF
+用法：$script_name <操作符> [分支名]
+
+功能：批量管理当前子模块仓库和其下一级子仓库的分支（适配 .git 为文件 + 完整路径拼接）
+操作符：
+  c   仅创建指定分支（当前仓库+所有子仓库，已存在则跳过）
+  b   创建并切换到指定分支（当前仓库+所有子仓库，已存在则直接切换）
+  s   仅切换到指定分支（当前仓库+所有子仓库）
+  r   将当前仓库+所有子仓库的当前分支rebase到指定本地分支
+  ls  列出当前仓库+所有子仓库已存在的分支（无需分支名参数）
+  h   显示此帮助信息并退出
+
+示例：
+  1. 仅创建分支：$script_name c feature/zzq_new_branch
+  2. 创建并切换分支：$script_name b feature/zzq_new_branch
+  3. 仅切换分支：$script_name s feature/zzq_add_next_line
+  4. 批量rebase到本地分支：$script_name r dev_branch
+  5. 列出所有分支：$script_name ls
+  6. 查看帮助：$script_name h
+
+注意：
+  - 脚本会自动拼接当前执行目录和子仓库名，生成子仓库完整绝对路径
+  - 请确保在子模块仓库根目录执行此脚本
+  - rebase操作会改写提交历史，仅在个人分支上使用，rebase前确保工作区干净
+  - rebase指定的分支为本地分支，脚本会先验证分支存在性
+EOF
+}
+
+# 函数：列出当前仓库分支
+list_main_branches() {
+    local script_abs_path=$(get_abs_path)
+    log_info "===== 当前仓库（子模块）分支列表 ====="
+    log_info "当前仓库绝对路径：$script_abs_path"
+    
+    # 验证当前目录是否为有效 Git 仓库（兼容 .git 是文件）
+    if ! is_git_repo "$script_abs_path"; then
+        log_error "当前目录 [$script_abs_path] 不是有效 Git 仓库（适配 .git 为文件的子模块场景）！"
+    fi
+    
+    # 切换到当前仓库绝对路径，列出分支
+    cd "$script_abs_path" || exit 1
+    git branch --list | sed 's/^\*/\033[32m&\033[0m/'
+    echo ""
+}
+
+# 函数：列出子仓库分支（拼接完整路径）
+list_submodule_branches() {
+    local script_abs_path=$(get_abs_path)
+    log_info "===== 子仓库分支列表 ====="
+    log_info "子仓库根路径：$script_abs_path"
+    
+    for submod in "${SUBMODULES[@]}"; do
+        # 拼接子仓库完整绝对路径
+        local submod_abs_path="${script_abs_path}/${submod}"
+        
+        if [ ! -d "$submod_abs_path" ]; then
+            log_warn "子仓库完整路径 [$submod_abs_path] 不存在，跳过"
+            continue
+        fi
+
+        echo -e "\033[36m--- $submod (完整路径：$submod_abs_path) ---\033[0m"
+        
+        # 验证子仓库是否为有效 Git 仓库（兼容 .git 是文件）
+        if ! is_git_repo "$submod_abs_path"; then
+            log_warn "子仓库 [$submod_abs_path] 不是有效 Git 仓库，跳过"
+            echo ""
+            continue
+        fi
+
+        # 切换到子仓库绝对路径，列出分支
+        cd "$submod_abs_path" || { log_warn "进入 [$submod_abs_path] 失败，跳过"; echo ""; continue; }
+        git branch --list | sed 's/^\*/\033[32m&\033[0m/'
+        cd "$script_abs_path" || exit 1
+        echo ""
+    done
+}
+
+# 新增函数：验证本地分支是否存在
+check_local_branch_exists() {
+    local repo_path="$1"
+    local branch="$2"
+    # 切换到仓库目录验证分支存在性
+    if cd "$repo_path" 2>/dev/null && git show-ref --verify --quiet "refs/heads/$branch"; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# 新增函数：当前仓库执行rebase
+main_repo_rebase() {
+    local target_branch=$1
+    local script_abs_path=$(get_abs_path)
+    
+    log_info "===== 当前仓库执行rebase ====="
+    log_info "当前仓库绝对路径：$script_abs_path"
+    log_info "目标rebase分支：$target_branch（本地分支）"
+    
+    # 切换到当前仓库绝对路径
+    cd "$script_abs_path" || exit 1
+    
+    # 验证当前目录是否为有效 Git 仓库
+    if ! is_git_repo "$script_abs_path"; then
+        log_error "当前目录 [$script_abs_path] 不是有效 Git 仓库！"
+    fi
+
+    # 验证目标分支是否存在
+    if ! check_local_branch_exists "$script_abs_path" "$target_branch"; then
+        log_error "当前仓库本地分支 $target_branch 不存在！"
+    fi
+
+    # 检查工作区是否干净
+    if [ -n "$(git status --porcelain)" ]; then
+        log_error "当前仓库工作区有未提交的修改！请先提交/暂存后再执行rebase"
+    fi
+
+    # 执行rebase
+    log_info "开始将当前仓库当前分支rebase到 $target_branch"
+    if git rebase "$target_branch"; then
+        log_info "当前仓库rebase完成"
+    else
+        log_warn "当前仓库rebase过程中出现冲突，请手动解决后执行 git rebase --continue"
+        log_warn "若要放弃rebase，请执行 git rebase --abort"
+        exit 1
+    fi
+}
+
+# 新增函数：子仓库批量执行rebase
+submodules_rebase() {
+    local target_branch=$1
+    local script_abs_path=$(get_abs_path)
+    
+    log_info "===== 子仓库批量执行rebase ====="
+    log_info "子仓库根路径：$script_abs_path"
+    log_info "目标rebase分支：$target_branch（本地分支）"
+    
+    # 确保回到当前仓库根路径
+    cd "$script_abs_path" || exit 1
+    
+    for submod in "${SUBMODULES[@]}"; do
+        # 拼接子仓库完整绝对路径
+        local submod_abs_path="${script_abs_path}/${submod}"
+        
+        if [ ! -d "$submod_abs_path" ]; then
+            log_warn "子仓库完整路径 [$submod_abs_path] 不存在，跳过"
+            continue
+        fi
+
+        log_info "处理子仓库：$submod (完整路径：$submod_abs_path)"
+        
+        # 验证子仓库是否为有效 Git 仓库
+        if ! is_git_repo "$submod_abs_path"; then
+            log_warn "子仓库 [$submod_abs_path] 不是有效 Git 仓库，跳过"
+            continue
+        fi
+
+        # 验证目标分支是否存在
+        if ! check_local_branch_exists "$submod_abs_path" "$target_branch"; then
+            log_warn "$submod 本地分支 $target_branch 不存在，跳过该子仓库"
+            continue
+        fi
+
+        # 切换到子仓库绝对路径
+        cd "$submod_abs_path" || { log_warn "进入 [$submod_abs_path] 失败，跳过"; continue; }
+
+        # 检查工作区是否干净
+        if [ -n "$(git status --porcelain)" ]; then
+            log_warn "$submod 工作区有未提交的修改，跳过该子仓库"
+            cd "$script_abs_path" || exit 1
+            continue
+        fi
+
+        # 执行rebase
+        log_info "$submod 开始rebase到 $target_branch"
+        if git rebase "$target_branch"; then
+            log_info "$submod rebase完成"
+        else
+            log_warn "$submod rebase过程中出现冲突，请手动解决后进入 $submod_abs_path 执行 git rebase --continue"
+            log_warn "若要放弃rebase，请执行 git rebase --abort"
+            cd "$script_abs_path" || exit 1
+            exit 1
+        fi
+
+        # 切回当前仓库根路径
+        cd "$script_abs_path" || exit 1
+    done
+}
+
+# 函数：当前仓库分支操作
+main_repo_op() {
+    local op_type=$1
+    local branch=$2
+    local script_abs_path=$(get_abs_path)
+    
+    log_info "===== 处理当前仓库（子模块） ====="
+    log_info "当前仓库绝对路径：$script_abs_path"
+    
+    # 切换到当前仓库绝对路径
+    cd "$script_abs_path" || exit 1
+    
+    # 验证当前目录是否为有效 Git 仓库
+    if ! is_git_repo "$script_abs_path"; then
+        log_error "当前目录 [$script_abs_path] 不是有效 Git 仓库（适配 .git 为文件的子模块场景）！"
+    fi
+
+    case "$op_type" in
+        "c")
+            # 仅创建分支（已存在则跳过）
+            if git show-ref --verify --quiet "refs/heads/$branch"; then
+                log_warn "当前仓库分支 $branch 已存在，跳过创建"
+            else
+                log_info "当前仓库创建分支 $branch（不切换）"
+                git branch "$branch"
+            fi
+            ;;
+        "b")
+            # 创建并切换分支（已存在则直接切换）
+            if git show-ref --verify --quiet "refs/heads/$branch"; then
+                log_warn "当前仓库分支 $branch 已存在，直接切换"
+                git checkout "$branch"
+            else
+                log_info "当前仓库新建并切换到分支 $branch"
+                git checkout -b "$branch"
+            fi
+            ;;
+        "s")
+            # 仅切换分支
+            if git show-ref --verify --quiet "refs/heads/$branch"; then
+                log_info "当前仓库切换到分支 $branch"
+                git checkout "$branch"
+            else
+                log_error "当前仓库不存在分支 $branch，请检查分支名！"
+            fi
+            ;;
+    esac
+}
+
+# 函数：子仓库批量分支操作（拼接完整路径）
+submodules_op() {
+    local op_type=$1
+    local branch=$2
+    local script_abs_path=$(get_abs_path)
+    
+    log_info "===== 处理子仓库 ====="
+    log_info "子仓库根路径：$script_abs_path"
+    
+    # 确保回到当前仓库根路径
+    cd "$script_abs_path" || exit 1
+    
+    for submod in "${SUBMODULES[@]}"; do
+        # 拼接子仓库完整绝对路径
+        local submod_abs_path="${script_abs_path}/${submod}"
+        
+        if [ ! -d "$submod_abs_path" ]; then
+            log_warn "子仓库完整路径 [$submod_abs_path] 不存在，跳过"
+            continue
+        fi
+
+        log_info "处理子仓库：$submod (完整路径：$submod_abs_path)"
+        
+        # 验证子仓库是否为有效 Git 仓库
+        if ! is_git_repo "$submod_abs_path"; then
+            log_warn "子仓库 [$submod_abs_path] 不是有效 Git 仓库，跳过"
+            continue
+        fi
+
+        # 切换到子仓库绝对路径执行操作
+        cd "$submod_abs_path" || { log_warn "进入 [$submod_abs_path] 失败，跳过"; continue; }
+
+        case "$op_type" in
+            "c")
+                # 仅创建分支（已存在则跳过）
+                if git show-ref --verify --quiet "refs/heads/$branch"; then
+                    log_warn "$submod 分支 $branch 已存在，跳过创建"
+                else
+                    log_info "$submod 创建分支 $branch（不切换）"
+                    git branch "$branch"
+                fi
+                ;;
+            "b")
+                # 创建并切换分支（已存在则直接切换）
+                if git show-ref --verify --quiet "refs/heads/$branch"; then
+                    log_warn "$submod 分支 $branch 已存在，直接切换"
+                    git checkout "$branch"
+                else
+                    log_info "$submod 新建并切换到分支 $branch"
+                    git checkout -b "$branch"
+                fi
+                ;;
+            "s")
+                # 仅切换分支
+                if git show-ref --verify --quiet "refs/heads/$branch"; then
+                    log_info "$submod 切换到分支 $branch"
+                    git checkout "$branch"
+                else
+                    log_warn "$submod 不存在分支 $branch，跳过该子仓库"
+                fi
+                ;;
+        esac
+
+        # 切回当前仓库根路径
+        cd "$script_abs_path" || exit 1
+    done
+}
+
+# ===================== 解析命令行参数 =====================
+# 处理 ls 和 h 无需分支名的情况
+if [ "$1" = "ls" ] || [ "$1" = "h" ]; then
+    if [ $# -ne 1 ]; then
+        log_error "操作符 $1 无需额外参数！执行 $0 h 查看帮助。"
+    fi
+    if [ "$1" = "h" ]; then
+        print_help
+        exit 0
+    elif [ "$1" = "ls" ]; then
+        list_main_branches
+        list_submodule_branches
+        exit 0
+    fi
+fi
+
+# 校验其他操作的参数数量
+if [ $# -ne 2 ]; then
+    log_error "参数错误！执行 $0 h 查看帮助。"
+fi
+
+# 解析操作符和分支名
+OP_TYPE="$1"
+BRANCH_NAME="$2"
+
+# 校验操作符合法性
+if [ "$OP_TYPE" != "c" ] && [ "$OP_TYPE" != "b" ] && [ "$OP_TYPE" != "s" ] && [ "$OP_TYPE" != "r" ]; then
+    log_error "无效操作符！仅支持 c/b/s/r/ls/h，执行 $0 h 查看帮助。"
+fi
+
+# ===================== 执行核心逻辑 =====================
+if [ "$OP_TYPE" = "r" ]; then
+    # 执行rebase操作
+    main_repo_rebase "$BRANCH_NAME"
+    submodules_rebase "$BRANCH_NAME"
+else
+    # 执行原有分支操作
+    main_repo_op "$OP_TYPE" "$BRANCH_NAME"
+    submodules_op "$OP_TYPE" "$BRANCH_NAME"
+fi
+
+log_info "===== 分支操作完成 ====="

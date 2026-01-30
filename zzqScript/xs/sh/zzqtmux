@@ -1,0 +1,28 @@
+#!/bin/bash
+
+tmux_list_sessions() {
+  tmux ls | nl -s " => "
+}
+
+switch_to_window() {
+  local session_name=$1
+  tmux attach -t "${session_name}"
+}
+
+create_new_window() {
+  local session_name=$1
+  tmux new -s "${session_name}"
+}
+
+tmux_list_sessions
+
+read -p ": " input
+
+if [[ "$input" == "q" ]]; then
+  exit 0
+elif [[ "$input" =~ ^[0-9]+$ ]]; then
+  session_name=$(tmux ls | sed -n "${input}p" | awk -F: '{print $1}')
+  switch_to_window "$session_name"
+else
+  create_new_window "$input"
+fi

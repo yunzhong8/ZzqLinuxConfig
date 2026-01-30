@@ -1,0 +1,75 @@
+#!/bin/bash
+set -e # 遇到错误时退出脚本
+
+logfile="zzq_clone_xs.log"
+logfile=$(pwd)"/"$logfile
+echo "日志文件位置: $logfile" > $logfile
+
+# 函数用于记录命令、时间戳和其输出
+log_and_execute() {
+  local command="$1"
+  local current_time
+  current_time=$(date '+%Y-%m-%d %H:%M:%S')
+  echo "[$current_time] 执行命令: $command" >> $logfile
+  eval "$command" &>> $logfile
+  current_time=$(date '+%Y-%m-%d %H:%M:%S')
+  echo "[$current_time] 命令结束" >> $logfile
+}
+
+log_function() {
+  local log="$1"
+  local current_time
+  current_time=$(date '+%Y-%m-%d %H:%M:%S')
+  echo "[$current_time] 执行命令: $log" >> $logfile
+}
+
+log_and_echo_function() {
+  local log="$1"
+  local current_time
+  current_time=$(date '+%Y-%m-%d %H:%M:%S')
+  echo "[$current_time]  $log" >> $logfile
+  echo "[$current_time]  $log"
+}
+
+ # 克隆香山代码仓库
+clone_xs_func(){
+    log_and_execute "git clone https://github.com/OpenXiangShan/xs-env $xsSourceCodeName"
+    log_and_execute "cd $xsSourceCodeName"
+    log_and_execute "pwd;source setup.sh" 
+    log_and_execute "source env.sh"
+    log_and_execute "source update-submodule.sh"
+}
+
+# 编译 DRAMsim3
+compile_DRAMsim3_func(){
+    log_and_execute "cd $XS_PROJECT_ROOT/DRAMsim3"
+    # build存在则不用创建
+    if [ -d build ] ;then
+        log_and_echo_function "build 目录已存在，跳过创建。"
+    else
+        log_and_execute "mkdir build"
+        log_and_execute "cd ./build"
+        log_and_execute "cmake -D COSIM=1 .."
+        log_and_execute "make -j4"
+    fi
+}
+
+# 赋值 xsSourceCodeName 为默认值
+xsSourceCodeName="xs-env"
+
+# 检查第一个参数是否传递
+if [ -n "$1" ]; then
+    xsSourceCodeName=$1
+fi
+
+# 检查是否已经克隆过
+if [ -d "$xsSourceCodeName" ] && [ -d "$xsSourceCodeName/.git" ]; then
+    log_and_echo_function "仓库已经存在，跳过克隆。"
+else
+    clone_xs_func
+fi
+
+# clone_xs_func
+
+compile_DRAMsim3_func
+
